@@ -19,11 +19,14 @@ WORDS = {
     "tova": "tova",
     "grun": "ɡrun",
     "shaki": "ʃaki",
-    "flabkiver": "flæbˈkɪvər"
+    "flabkiver": "flæbˈkɪvər",
+    "dracarys": "draˈkarys",
+    "lykiri": "lyˈkiri",
+    "dohaeras": "dohaeˈra:s",
 }
 
 # Tune these experimentally.
-MAX_DISTANCE = 5
+MAX_DISTANCE = 10
 MIN_MARGIN = 0.4
 
 
