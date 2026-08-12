@@ -4,6 +4,7 @@ from .analyzer import (
     DEFAULT_WORDS,
     MatchResult,
     decide_match,
+    distance_ratio,
     listen_and_match,
     normalize_ipa,
 )
@@ -13,6 +14,7 @@ __all__ = [
     "DEFAULT_WORDS",
     "MatchResult",
     "decide_match",
+    "distance_ratio",
     "listen_and_match",
     "main",
     "normalize_ipa",

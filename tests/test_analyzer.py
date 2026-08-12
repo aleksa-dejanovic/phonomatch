@@ -1,7 +1,7 @@
 import math
 import unittest
 
-from sound_analyzer.analyzer import decide_match, normalize_ipa, normalized_distance
+from sound_analyzer.analyzer import decide_match, distance_ratio, normalize_ipa
 
 
 def simple_distance(a: str, b: str) -> float:
@@ -19,8 +19,9 @@ class AnalyzerTests(unittest.TestCase):
         self.assertEqual(normalize_ipa("a: t’s"), "aːtʼs")
         self.assertEqual(normalize_ipa("t͜ʃ"), "t͡ʃ")
 
-    def test_normalized_distance_handles_empty_strings(self):
-        self.assertEqual(normalized_distance(0, "", ""), 0)
+    def test_distance_ratio_uses_maximum_cost(self):
+        self.assertEqual(distance_ratio(0, 0), 0)
+        self.assertEqual(distance_ratio(5, 100), 0.05)
 
     def test_clear_match_is_accepted(self):
         result = decide_match("tova", {"tova": "tova", "naku": "naku"}, simple_distance)

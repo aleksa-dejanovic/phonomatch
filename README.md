@@ -4,6 +4,10 @@ Sound Analyzer records a short utterance, uses Allosaurus to transcribe it to IP
 and compares it with a small configurable vocabulary using PanPhon's weighted
 feature edit distance. Weak and ambiguous matches are rejected.
 
+Distances are percentages of PanPhon's theoretical maximum edit cost for the
+two phone sequences. A match must be no more than 5% of that maximum, distinct
+from the runner-up, and sufficiently confident.
+
 ## Requirements
 
 - Python 3.9 or newer

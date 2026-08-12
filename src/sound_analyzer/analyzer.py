@@ -67,8 +67,19 @@ def normalize_ipa(ipa: str) -> str:
     return unicodedata.normalize("NFC", compact)
 
 
-def normalized_distance(cost: float, ipa_a: str, ipa_b: str) -> float:
-    return cost / max(len(normalize_ipa(ipa_a)), len(normalize_ipa(ipa_b)), 1)
+def distance_ratio(cost: float, maximum_cost: float) -> float:
+    """Express an edit cost as a fraction of its theoretical maximum."""
+    if cost < 0 or not math.isfinite(cost):
+        raise ValueError("distance_function must return a finite non-negative value")
+    if maximum_cost < 0 or not math.isfinite(maximum_cost):
+        raise ValueError("maximum_distance_function must return a finite non-negative value")
+    if maximum_cost == 0:
+        return 0.0 if cost == 0 else math.inf
+    return cost / maximum_cost
+
+
+def _unit_edit_maximum(ipa_a: str, ipa_b: str) -> float:
+    return float(len(ipa_a) + len(ipa_b))
 
 
 def decide_match(
@@ -76,8 +87,9 @@ def decide_match(
     candidates: Mapping[str, str],
     distance_function: Callable[[str, str], float],
     *,
-    temperature: float = 0.5,
-    max_normalized_distance: float = 0.8,
+    maximum_distance_function: Callable[[str, str], float] = _unit_edit_maximum,
+    temperature: float = 0.05,
+    max_distance_ratio: float = 0.1,
     min_margin: float = 0.08,
     min_confidence: float = 0.8,
 ) -> MatchResult:
@@ -91,11 +103,10 @@ def decide_match(
     raw_scores: list[tuple[str, str, float, float]] = []
     for word, candidate_ipa in candidates.items():
         candidate_ipa = normalize_ipa(candidate_ipa)
-        distance = normalized_distance(
-            distance_function(query, candidate_ipa), query, candidate_ipa
+        distance = distance_ratio(
+            distance_function(query, candidate_ipa),
+            maximum_distance_function(query, candidate_ipa),
         )
-        if not math.isfinite(distance) or distance < 0:
-            raise ValueError("distance_function must return a finite non-negative value")
         raw_scores.append((word, candidate_ipa, distance, -distance / temperature))
 
     raw_scores.sort(key=lambda score: score[2])
@@ -110,7 +121,7 @@ def decide_match(
     second = scores[1] if len(scores) > 1 else None
     margin = second.distance - best.distance if second else math.inf
     accepted = (
-        best.distance <= max_normalized_distance
+        best.distance <= max_distance_ratio
         and margin >= min_margin
         and best.confidence >= min_confidence
     )
@@ -162,6 +173,14 @@ def phonetic_distance(a: str, b: str) -> float:
     )
 
 
+def phonetic_maximum_distance(a: str, b: str) -> float:
+    """Return PanPhon's maximum edit cost for two recognized phone sequences."""
+    calculator = _distance_calculator()
+    source = calculator.fm.word_to_vector_list(normalize_ipa(a), numeric=True)
+    target = calculator.fm.word_to_vector_list(normalize_ipa(b), numeric=True)
+    return sum(calculator.fm.weights) * (len(source) + len(target))
+
+
 @lru_cache(maxsize=1)
 def _distance_calculator():
     from panphon.distance import Distance
@@ -178,6 +197,11 @@ def listen_and_match(
     wav_path = record_word(seconds)
     try:
         ipa = speech_to_ipa(wav_path)
-        return ipa, decide_match(ipa, words, phonetic_distance)
+        return ipa, decide_match(
+            ipa,
+            words,
+            phonetic_distance,
+            maximum_distance_function=phonetic_maximum_distance,
+        )
     finally:
         wav_path.unlink(missing_ok=True)

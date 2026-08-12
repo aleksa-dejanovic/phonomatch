@@ -24,7 +24,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print(f"Decision: {result.decision}")
     print(
         f"Best candidate: {result.best_candidate.word} /{result.best_candidate.ipa}/ "
-        f"(distance={result.best_candidate.distance:.3f}, "
+        f"(distance={result.best_candidate.distance:.1%} of maximum, "
         f"confidence={result.best_candidate.confidence:.1%})"
     )
     return 0 if result.accepted else 2
