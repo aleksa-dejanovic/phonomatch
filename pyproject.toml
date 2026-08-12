@@ -1,7 +1,7 @@
 [project]
 name = "sound-analyzer"
 version = "0.1.0"
-description = "Add your description here"
+description = "Record speech, transcribe it to IPA, and match it against a word list"
 readme = "README.md"
 authors = [
     { name = "Aleksa Dejanovic", email = "dejanovicaleksa234@gmail.com" }
@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [project.scripts]
-sound-analyzer = "sound_analyzer:main"
+sound-analyzer = "sound_analyzer.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.12.2,<0.13.0"]
