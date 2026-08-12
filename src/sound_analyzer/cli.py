@@ -1,30 +1,73 @@
 """Command-line interface for sound-analyzer."""
 
+from __future__ import annotations
+
 import argparse
+import sys
 from collections.abc import Sequence
 from typing import Optional
 
-from .analyzer import listen_and_match
+from .analyzer import SoundAnalyzer
+from .config import MatchSettings
+from .exceptions import SoundAnalyzerError
+from .presentation import Palette, color_enabled, render_result
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="sound-analyzer",
+        description="Match a spoken word using its IPA transcription.",
+    )
+    parser.add_argument(
+        "--seconds",
+        type=_positive_float,
+        default=2.0,
+        help="recording duration (default: 2)",
+    )
+    parser.add_argument(
+        "--max-distance",
+        type=_percentage,
+        default=MatchSettings().max_distance_ratio,
+        metavar="RATIO",
+        help="maximum distance ratio from 0 to 1 (default: 0.10)",
+    )
+    parser.add_argument(
+        "--color",
+        choices=("auto", "always", "never"),
+        default="auto",
+        help="colored output: auto, always, or never (default: auto)",
+    )
+    return parser
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Match a spoken word using its IPA transcription.")
-    parser.add_argument("--seconds", type=float, default=2.0, help="recording duration (default: 2)")
-    args = parser.parse_args(argv)
-    if args.seconds <= 0:
-        parser.error("--seconds must be greater than zero")
+    args = build_parser().parse_args(argv)
+    settings = MatchSettings(max_distance_ratio=args.max_distance)
+    use_color = color_enabled(args.color, sys.stdout)
+    palette = Palette(use_color)
 
-    print("Say a word...")
+    print(palette.cyan("● Listening — say a word..."))
     try:
-        ipa, result = listen_and_match(seconds=args.seconds)
-    except Exception as exc:
-        parser.exit(1, f"sound-analyzer: {exc}\n")
+        result = SoundAnalyzer(settings=settings).listen(seconds=args.seconds)
+    except (SoundAnalyzerError, ValueError) as exc:
+        error_palette = Palette(color_enabled(args.color, sys.stderr))
+        print(error_palette.red(f"Error: {exc}"), file=sys.stderr)
+        return 1
 
-    print(f"Recognized IPA: /{ipa}/")
-    print(f"Decision: {result.decision}")
-    print(
-        f"Best candidate: {result.best_candidate.word} /{result.best_candidate.ipa}/ "
-        f"(distance={result.best_candidate.distance:.1%} of maximum, "
-        f"confidence={result.best_candidate.confidence:.1%})"
-    )
-    return 0 if result.accepted else 2
+    print()
+    print(render_result(result, settings, color=use_color))
+    return 0 if result.match.accepted else 2
+
+
+def _positive_float(value: str) -> float:
+    parsed = float(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than zero")
+    return parsed
+
+
+def _percentage(value: str) -> float:
+    parsed = float(value)
+    if not 0 <= parsed <= 1:
+        raise argparse.ArgumentTypeError("must be between zero and one")
+    return parsed

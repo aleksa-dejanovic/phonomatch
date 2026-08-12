@@ -1,21 +1,32 @@
 """Record speech, transcribe it to IPA, and match it against known words."""
 
-from .analyzer import (
-    DEFAULT_WORDS,
-    MatchResult,
-    decide_match,
-    distance_ratio,
-    listen_and_match,
-    normalize_ipa,
+from .analyzer import SoundAnalyzer, listen_and_match
+from .config import DEFAULT_WORDS, MatchSettings
+from .exceptions import (
+    AudioRecordingError,
+    RecognitionError,
+    SoundAnalyzerError,
+    UnsupportedPhoneError,
 )
-from .cli import main
+from .ipa import normalize_ipa
+from .matching import decide_match, distance_ratio
+from .models import AnalysisResult, CandidateScore, MatchResult
+from .phonetics import phones_for_words
 
 __all__ = [
     "DEFAULT_WORDS",
+    "AnalysisResult",
+    "AudioRecordingError",
+    "CandidateScore",
     "MatchResult",
+    "MatchSettings",
+    "RecognitionError",
+    "SoundAnalyzer",
+    "SoundAnalyzerError",
+    "UnsupportedPhoneError",
     "decide_match",
     "distance_ratio",
     "listen_and_match",
-    "main",
     "normalize_ipa",
+    "phones_for_words",
 ]
