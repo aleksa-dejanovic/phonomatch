@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+import time
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 from .audio import recorded_audio
 from .config import DEFAULT_SETTINGS, DEFAULT_WORDS, MatchSettings
@@ -39,8 +40,14 @@ class SoundAnalyzer:
 
     def analyze_file(self, wav_path: Union[str, Path]) -> AnalysisResult:
         """Transcribe and match an existing WAV file."""
+        started_at = time.perf_counter()
         ipa = speech_to_ipa(wav_path, self._phones)
-        return self.match_ipa(ipa)
+        result = self.match_ipa(ipa)
+        return AnalysisResult(
+            recognized_ipa=result.recognized_ipa,
+            match=result.match,
+            recognition_seconds=time.perf_counter() - started_at,
+        )
 
     def match_ipa(self, ipa: str) -> AnalysisResult:
         """Match an existing IPA transcription without recording audio."""
@@ -53,9 +60,16 @@ class SoundAnalyzer:
         )
         return AnalysisResult(recognized_ipa=ipa, match=match)
 
-    def listen(self, *, seconds: float = 2.0) -> AnalysisResult:
+    def listen(
+        self,
+        *,
+        seconds: float = 2.0,
+        on_recording_complete: Optional[Callable[[], None]] = None,
+    ) -> AnalysisResult:
         """Record from the default microphone, transcribe, and match."""
         with recorded_audio(seconds) as wav_path:
+            if on_recording_complete is not None:
+                on_recording_complete()
             return self.analyze_file(wav_path)
 
 

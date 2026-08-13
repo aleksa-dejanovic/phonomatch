@@ -47,8 +47,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     palette = Palette(use_color)
 
     print(palette.cyan("● Listening — say a word..."))
+
+    def recording_complete() -> None:
+        print(palette.cyan("■ Recording stopped — recognizing..."), flush=True)
+
     try:
-        result = SoundAnalyzer(settings=settings).listen(seconds=args.seconds)
+        result = SoundAnalyzer(settings=settings).listen(
+            seconds=args.seconds,
+            on_recording_complete=recording_complete,
+        )
     except (SoundAnalyzerError, ValueError) as exc:
         error_palette = Palette(color_enabled(args.color, sys.stderr))
         print(error_palette.red(f"Error: {exc}"), file=sys.stderr)
