@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import os
 import wave
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -126,6 +127,11 @@ def _mask_logits(logits: Any, tokenizer: Any, phones: Iterable[str]) -> Any:
 
 @lru_cache(maxsize=2)
 def _model_bundle(model_id: str) -> _ModelBundle:
+    # This checkpoint publishes PyTorch weights on its main revision. Without
+    # this flag, Transformers also downloads an unmerged SafeTensors conversion
+    # PR in the background, nearly doubling the Hugging Face cache footprint.
+    os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "true")
+
     from huggingface_hub import hf_hub_download
     from transformers import (
         AutoModelForCTC,
@@ -141,7 +147,7 @@ def _model_bundle(model_id: str) -> _ModelBundle:
         word_delimiter_token=None,
     )
     feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(model_id)
-    model = AutoModelForCTC.from_pretrained(model_id)
+    model = AutoModelForCTC.from_pretrained(model_id, use_safetensors=False)
     model.eval()
     return _ModelBundle(
         tokenizer=tokenizer,

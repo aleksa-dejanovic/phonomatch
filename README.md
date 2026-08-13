@@ -39,6 +39,10 @@ uv run sound-analyzer
 The first run downloads `facebook/wav2vec2-lv-60-espeak-cv-ft` from Hugging
 Face. Later runs reuse the local Hugging Face cache.
 
+The loader explicitly uses the model's official PyTorch weights and disables
+Transformers' automatic download of an unmerged SafeTensors conversion. A clean
+model cache therefore occupies approximately 1.2 GiB instead of 2.4 GiB.
+
 The console announces when recording ends and recognition starts. The final
 report includes the total recognition and matching time.
 
