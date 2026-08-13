@@ -50,6 +50,11 @@ def _distance_calculator() -> Any:
             message=r"pkg_resources is deprecated as an API\..*",
             category=UserWarning,
         )
+        warnings.filterwarnings(
+            "ignore",
+            message=r"invalid escape sequence .*",
+            category=DeprecationWarning,
+        )
         from panphon.distance import Distance
 
     return Distance()
