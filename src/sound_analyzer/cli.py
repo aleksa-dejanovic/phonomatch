@@ -46,13 +46,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     use_color = color_enabled(args.color, sys.stdout)
     palette = Palette(use_color)
 
-    print(palette.cyan("● Listening — say a word..."))
-
     def recording_complete() -> None:
         print(palette.cyan("■ Recording stopped — recognizing..."), flush=True)
 
     try:
-        result = SoundAnalyzer(settings=settings).listen(
+        analyzer = SoundAnalyzer(settings=settings)
+        print(palette.cyan("◌ Loading speech model..."), flush=True)
+        analyzer.load_model()
+        print(palette.green("● Model ready"), flush=True)
+        print(palette.cyan("● Listening — say a word..."), flush=True)
+        result = analyzer.listen(
             seconds=args.seconds,
             on_recording_complete=recording_complete,
         )

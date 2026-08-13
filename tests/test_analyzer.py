@@ -35,17 +35,34 @@ class AnalyzerTests(unittest.TestCase):
             recognize.call_args.kwargs["model_revision"], "immutable-commit"
         )
 
+    def test_load_model_forwards_configured_model(self) -> None:
+        analyzer = SoundAnalyzer(
+            {"grun": "ɡrun", "naku": "naku"},
+            model_id="example/model",
+            model_revision="immutable-commit",
+        )
+        with patch("sound_analyzer.analyzer.load_model") as preload:
+            analyzer.load_model()
+
+        preload.assert_called_once_with("example/model", "immutable-commit")
+
     def test_listen_reports_when_recording_is_complete(self) -> None:
         analyzer = SoundAnalyzer({"grun": "ɡrun", "naku": "naku"})
         events: list[str] = []
 
         @contextmanager
         def fake_recording(_seconds: float) -> Iterator[Path]:
+            events.append("recording_started")
             yield Path("recording.wav")
 
         expected = analyzer.match_ipa("gɾun")
         with (
             patch("sound_analyzer.analyzer.recorded_audio", fake_recording),
+            patch.object(
+                analyzer,
+                "load_model",
+                side_effect=lambda: events.append("model_loaded"),
+            ) as preload,
             patch.object(analyzer, "analyze_file", return_value=expected),
         ):
             result = analyzer.listen(
@@ -53,4 +70,8 @@ class AnalyzerTests(unittest.TestCase):
             )
 
         self.assertIs(result, expected)
-        self.assertEqual(events, ["recording_complete"])
+        self.assertEqual(
+            events,
+            ["model_loaded", "recording_started", "recording_complete"],
+        )
+        preload.assert_called_once_with()

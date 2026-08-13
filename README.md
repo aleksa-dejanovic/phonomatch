@@ -48,8 +48,10 @@ The loader explicitly uses the model's official PyTorch weights and disables
 Transformers' automatic download of an unmerged SafeTensors conversion. A clean
 model cache therefore occupies approximately 1.2 GiB instead of 2.4 GiB.
 
-The console announces when recording ends and recognition starts. The final
-report includes the total recognition and matching time.
+The console loads the model before recording begins, announces when recording
+ends and recognition starts, and reports the recognition and matching time.
+Keeping the loaded analyzer instance alive also keeps the model resident for
+subsequent requests.
 
 Useful CLI options:
 

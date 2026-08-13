@@ -16,7 +16,12 @@ from .phonetics import (
     phonetic_distance,
     phonetic_maximum_distance,
 )
-from .recognition import DEFAULT_MODEL_ID, DEFAULT_MODEL_REVISION, speech_to_ipa
+from .recognition import (
+    DEFAULT_MODEL_ID,
+    DEFAULT_MODEL_REVISION,
+    load_model,
+    speech_to_ipa,
+)
 
 
 class SoundAnalyzer:
@@ -59,6 +64,10 @@ class SoundAnalyzer:
             recognition_seconds=time.perf_counter() - started_at,
         )
 
+    def load_model(self) -> None:
+        """Load the speech model now so later recognition avoids startup delay."""
+        load_model(self._model_id, self._model_revision)
+
     def match_ipa(self, ipa: str) -> AnalysisResult:
         """Match an existing IPA transcription without recording audio."""
         match = decide_match(
@@ -77,6 +86,7 @@ class SoundAnalyzer:
         on_recording_complete: Optional[Callable[[], None]] = None,
     ) -> AnalysisResult:
         """Record from the default microphone, transcribe, and match."""
+        self.load_model()
         with recorded_audio(seconds) as wav_path:
             if on_recording_complete is not None:
                 on_recording_complete()

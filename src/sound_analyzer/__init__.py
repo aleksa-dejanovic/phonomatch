@@ -12,7 +12,7 @@ from .ipa import normalize_ipa
 from .matching import decide_match, distance_ratio
 from .models import AnalysisResult, CandidateScore, MatchResult
 from .phonetics import phones_for_words
-from .recognition import DEFAULT_MODEL_ID, DEFAULT_MODEL_REVISION
+from .recognition import DEFAULT_MODEL_ID, DEFAULT_MODEL_REVISION, load_model
 
 __all__ = [
     "DEFAULT_MODEL_ID",
@@ -30,6 +30,7 @@ __all__ = [
     "decide_match",
     "distance_ratio",
     "listen_and_match",
+    "load_model",
     "normalize_ipa",
     "phones_for_words",
 ]

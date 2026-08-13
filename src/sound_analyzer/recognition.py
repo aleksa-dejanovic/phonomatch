@@ -29,6 +29,19 @@ class _ModelBundle:
     model: Any
 
 
+def load_model(
+    model_id: str = DEFAULT_MODEL_ID,
+    model_revision: Optional[str] = DEFAULT_MODEL_REVISION,
+) -> None:
+    """Load and cache the recognition model without processing audio."""
+    try:
+        _model_bundle(model_id, model_revision)
+    except Exception as exc:
+        raise RecognitionError(
+            f"could not load speech recognition model: {exc}"
+        ) from exc
+
+
 def speech_to_ipa(
     wav_path: Union[str, Path],
     allowed_phones: Optional[Iterable[str]] = None,
