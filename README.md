@@ -39,6 +39,9 @@ uv run sound-analyzer
 The first run downloads `facebook/wav2vec2-lv-60-espeak-cv-ft` from Hugging
 Face. Later runs reuse the local Hugging Face cache.
 
+The console announces when recording ends and recognition starts. The final
+report includes the total recognition and matching time.
+
 Useful CLI options:
 
 ```console

@@ -66,9 +66,10 @@ def render_result(
         palette.dim("=" * 48),
         f"Heard    /{result.recognized_ipa}/",
         f"Result   {decision}",
-        "",
-        palette.bold("Candidates"),
     ]
+    if result.recognition_seconds is not None:
+        lines.append(f"Time     {result.recognition_seconds:.2f} s")
+    lines.extend(("", palette.bold("Candidates")))
 
     candidate_rows = [
         (

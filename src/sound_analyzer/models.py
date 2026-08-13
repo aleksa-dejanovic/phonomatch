@@ -39,3 +39,4 @@ class AnalysisResult:
 
     recognized_ipa: str
     match: MatchResult
+    recognition_seconds: Optional[float] = None

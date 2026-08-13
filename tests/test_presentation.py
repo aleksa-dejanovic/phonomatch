@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import replace
 
 from sound_analyzer import MatchSettings, SoundAnalyzer
 from sound_analyzer.presentation import render_result
@@ -21,3 +22,8 @@ class PresentationTests(unittest.TestCase):
     def test_color_output_uses_ansi_sequences(self) -> None:
         report = render_result(self.result, self.settings, color=True)
         self.assertIn("\033[", report)
+
+    def test_report_displays_recognition_duration(self) -> None:
+        result = replace(self.result, recognition_seconds=1.234)
+        report = render_result(result, self.settings)
+        self.assertIn("Time     1.23 s", report)
