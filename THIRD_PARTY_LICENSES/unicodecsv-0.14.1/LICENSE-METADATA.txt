@@ -1,0 +1,5 @@
+unicodecsv 0.14.1
+Author: Jeremy Dunck
+Source: https://pypi.org/project/unicodecsv/0.14.1/
+Upstream metadata: BSD License; OSI Approved :: BSD License
+The upstream source distribution does not include a license text.

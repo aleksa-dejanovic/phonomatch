@@ -16,7 +16,7 @@ from .phonetics import (
     phonetic_distance,
     phonetic_maximum_distance,
 )
-from .recognition import DEFAULT_MODEL_ID, speech_to_ipa
+from .recognition import DEFAULT_MODEL_ID, DEFAULT_MODEL_REVISION, speech_to_ipa
 
 
 class SoundAnalyzer:
@@ -28,6 +28,7 @@ class SoundAnalyzer:
         settings: MatchSettings = DEFAULT_SETTINGS,
         *,
         model_id: str = DEFAULT_MODEL_ID,
+        model_revision: Optional[str] = DEFAULT_MODEL_REVISION,
     ) -> None:
         if not words:
             raise ValueError("at least one vocabulary word is required")
@@ -35,6 +36,7 @@ class SoundAnalyzer:
         self._settings = settings
         self._phones = phones_for_words(self._words)
         self._model_id = model_id
+        self._model_revision = model_revision
 
     @property
     def words(self) -> Mapping[str, str]:
@@ -44,7 +46,12 @@ class SoundAnalyzer:
     def analyze_file(self, wav_path: Union[str, Path]) -> AnalysisResult:
         """Transcribe and match an existing WAV file."""
         started_at = time.perf_counter()
-        ipa = speech_to_ipa(wav_path, self._phones, model_id=self._model_id)
+        ipa = speech_to_ipa(
+            wav_path,
+            self._phones,
+            model_id=self._model_id,
+            model_revision=self._model_revision,
+        )
         result = self.match_ipa(ipa)
         return AnalysisResult(
             recognized_ipa=result.recognized_ipa,

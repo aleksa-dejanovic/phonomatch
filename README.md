@@ -36,8 +36,13 @@ uv sync
 uv run sound-analyzer
 ```
 
-The first run downloads `facebook/wav2vec2-lv-60-espeak-cv-ft` from Hugging
-Face. Later runs reuse the local Hugging Face cache.
+Use `uv sync --locked` in production and CI so dependency resolution cannot
+change after review. Linux and Windows installations use the CPU-only PyTorch
+index; this avoids bundling unused CUDA libraries in the recognition service.
+
+The first run downloads `facebook/wav2vec2-lv-60-espeak-cv-ft` at the pinned
+revision `ae45363bf3413b374fecd9dc8bc1df0e24c3b7f4`. Later runs reuse the local
+Hugging Face cache, so model contents and licensing cannot drift silently.
 
 The loader explicitly uses the model's official PyTorch weights and disables
 Transformers' automatic download of an unmerged SafeTensors conversion. A clean
@@ -90,7 +95,11 @@ print(result.match.best_candidate.word)
 You can use a compatible local or Hugging Face model identifier:
 
 ```python
-analyzer = SoundAnalyzer(words, model_id="/path/to/local/model")
+analyzer = SoundAnalyzer(
+    words,
+    model_id="/path/to/local/model",
+    model_revision=None,
+)
 ```
 
 The model must be compatible with `AutoModelForCTC` and its tokenizer must use
@@ -144,6 +153,8 @@ network access on its first run and can be performed with the installed CLI.
 
 This branch does not depend on GPL-licensed Allosaurus. The default Meta model
 is published under Apache License 2.0, as are Hugging Face Transformers. PyTorch
-uses a BSD-style license. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
-and verify all distribution obligations with qualified counsel before shipping
-a commercial product.
+uses a BSD-style license. Exact runtime licenses are collected under
+[`THIRD_PARTY_LICENSES`](THIRD_PARTY_LICENSES), with the generated inventory in
+[`DEPENDENCY_LICENSE_REPORT.md`](DEPENDENCY_LICENSE_REPORT.md). Follow the
+[`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md) and verify all distribution
+obligations with qualified counsel before shipping a commercial product.

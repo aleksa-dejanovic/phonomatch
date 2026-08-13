@@ -3,6 +3,11 @@ name = "sound-analyzer"
 version = "0.1.0"
 description = "Record speech, transcribe it to IPA, and match it against a word list"
 readme = "README.md"
+license-files = [
+    "THIRD_PARTY_NOTICES.md",
+    "DEPENDENCY_LICENSE_REPORT.md",
+    "THIRD_PARTY_LICENSES/**",
+]
 authors = [
     { name = "Aleksa Dejanovic", email = "dejanovicaleksa234@gmail.com" }
 ]
@@ -29,6 +34,19 @@ sound-analyzer = "sound_analyzer.cli:main"
 [build-system]
 requires = ["uv_build>=0.12.2,<0.13.0"]
 build-backend = "uv_build"
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+
+[tool.uv.build-backend]
+source-include = ["RELEASE_CHECKLIST.md", "scripts/generate_license_bundle.py"]
 
 [tool.ruff]
 target-version = "py39"

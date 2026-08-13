@@ -18,6 +18,7 @@ from .exceptions import RecognitionError, UnsupportedPhoneError
 from .ipa import normalize_ipa
 
 DEFAULT_MODEL_ID = "facebook/wav2vec2-lv-60-espeak-cv-ft"
+DEFAULT_MODEL_REVISION = "ae45363bf3413b374fecd9dc8bc1df0e24c3b7f4"
 TARGET_SAMPLE_RATE = 16_000
 
 
@@ -33,6 +34,7 @@ def speech_to_ipa(
     allowed_phones: Optional[Iterable[str]] = None,
     *,
     model_id: str = DEFAULT_MODEL_ID,
+    model_revision: Optional[str] = DEFAULT_MODEL_REVISION,
 ) -> str:
     """Transcribe a PCM WAV file to IPA with Wav2Vec2Phoneme.
 
@@ -48,7 +50,7 @@ def speech_to_ipa(
 
     try:
         audio = _read_audio(path)
-        bundle = _model_bundle(model_id)
+        bundle = _model_bundle(model_id, model_revision)
         inputs = bundle.feature_extractor(
             audio,
             sampling_rate=TARGET_SAMPLE_RATE,
@@ -126,7 +128,7 @@ def _mask_logits(logits: Any, tokenizer: Any, phones: Iterable[str]) -> Any:
 
 
 @lru_cache(maxsize=2)
-def _model_bundle(model_id: str) -> _ModelBundle:
+def _model_bundle(model_id: str, revision: Optional[str]) -> _ModelBundle:
     # This checkpoint publishes PyTorch weights on its main revision. Without
     # this flag, Transformers also downloads an unmerged SafeTensors conversion
     # PR in the background, nearly doubling the Hugging Face cache footprint.
@@ -139,15 +141,31 @@ def _model_bundle(model_id: str) -> _ModelBundle:
         Wav2Vec2FeatureExtractor,
     )
 
-    vocab_file = hf_hub_download(model_id, filename="vocab.json")
+    model_path = Path(model_id)
+    is_local = model_path.is_dir()
+    vocab_file = (
+        str(model_path / "vocab.json")
+        if is_local
+        else hf_hub_download(model_id, filename="vocab.json", revision=revision)
+    )
     tokenizer = Wav2Vec2CTCTokenizer(  # type: ignore[no-untyped-call]
         vocab_file,
         unk_token="<unk>",
         pad_token="<pad>",
         word_delimiter_token=None,
     )
-    feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(model_id)
-    model = AutoModelForCTC.from_pretrained(model_id, use_safetensors=False)
+    if is_local or revision is None:
+        feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(model_id)
+        model = AutoModelForCTC.from_pretrained(model_id, use_safetensors=False)
+    else:
+        feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(
+            model_id, revision=revision
+        )
+        model = AutoModelForCTC.from_pretrained(
+            model_id,
+            revision=revision,
+            use_safetensors=False,
+        )
     model.eval()
     return _ModelBundle(
         tokenizer=tokenizer,

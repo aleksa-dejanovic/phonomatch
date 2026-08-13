@@ -18,6 +18,23 @@ class AnalyzerTests(unittest.TestCase):
         self.assertTrue(result.match.accepted)
         self.assertEqual(result.match.best_candidate.word, "grun")
 
+    def test_analyze_file_forwards_model_revision(self) -> None:
+        analyzer = SoundAnalyzer(
+            {"grun": "ɡrun", "naku": "naku"},
+            model_id="example/model",
+            model_revision="immutable-commit",
+        )
+        with patch(
+            "sound_analyzer.analyzer.speech_to_ipa", return_value="ɡrun"
+        ) as recognize:
+            analyzer.analyze_file("recording.wav")
+
+        recognize.assert_called_once()
+        self.assertEqual(recognize.call_args.kwargs["model_id"], "example/model")
+        self.assertEqual(
+            recognize.call_args.kwargs["model_revision"], "immutable-commit"
+        )
+
     def test_listen_reports_when_recording_is_complete(self) -> None:
         analyzer = SoundAnalyzer({"grun": "ɡrun", "naku": "naku"})
         events: list[str] = []
