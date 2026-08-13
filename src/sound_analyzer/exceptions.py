@@ -10,8 +10,8 @@ class AudioRecordingError(SoundAnalyzerError):
 
 
 class RecognitionError(SoundAnalyzerError):
-    """Raised when Allosaurus cannot transcribe a recording."""
+    """Raised when Wav2Vec2Phoneme cannot transcribe a recording."""
 
 
 class UnsupportedPhoneError(RecognitionError):
-    """Raised when a vocabulary phone is unavailable in the active model."""
+    """Raised when a vocabulary phone is unavailable in Wav2Vec2Phoneme."""

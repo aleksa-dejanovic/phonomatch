@@ -1,70 +1,150 @@
-"""Allosaurus integration with vocabulary-specific phone masking."""
+"""Wav2Vec2Phoneme integration with vocabulary-constrained CTC decoding."""
 
 from __future__ import annotations
 
-import tempfile
+import math
+import wave
 from collections.abc import Iterable
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Optional, Union
 
+import numpy as np
+from scipy.signal import resample_poly
+
 from .exceptions import RecognitionError, UnsupportedPhoneError
 from .ipa import normalize_ipa
+
+DEFAULT_MODEL_ID = "facebook/wav2vec2-lv-60-espeak-cv-ft"
+TARGET_SAMPLE_RATE = 16_000
+
+
+@dataclass(frozen=True)
+class _ModelBundle:
+    tokenizer: Any
+    feature_extractor: Any
+    model: Any
 
 
 def speech_to_ipa(
     wav_path: Union[str, Path],
     allowed_phones: Optional[Iterable[str]] = None,
+    *,
+    model_id: str = DEFAULT_MODEL_ID,
 ) -> str:
-    """Transcribe a WAV file, optionally restricting the decoder inventory."""
+    """Transcribe a PCM WAV file to IPA with Wav2Vec2Phoneme.
+
+    When ``allowed_phones`` is supplied, tokens outside that inventory are
+    masked before CTC decoding. The model is downloaded once by Hugging Face
+    and then reused from its local cache.
+    """
     path = Path(wav_path)
     if not path.is_file():
         raise RecognitionError(f"audio file does not exist: {path}")
     if path.suffix.lower() != ".wav":
-        raise RecognitionError("Allosaurus only supports WAV input")
+        raise RecognitionError("Wav2Vec2Phoneme requires WAV input")
 
-    recognizer = _recognizer()
     try:
-        if allowed_phones is None:
-            transcription = recognizer.recognize(str(path), lang_id="ipa")
-        else:
-            transcription = _recognize_with_inventory(recognizer, path, allowed_phones)
-    except (RecognitionError, UnsupportedPhoneError):
+        audio = _read_audio(path)
+        bundle = _model_bundle(model_id)
+        inputs = bundle.feature_extractor(
+            audio,
+            sampling_rate=TARGET_SAMPLE_RATE,
+            return_tensors="pt",
+        )
+
+        import torch
+
+        with torch.inference_mode():
+            logits = bundle.model(**inputs).logits
+        if allowed_phones is not None:
+            logits = _mask_logits(logits, bundle.tokenizer, allowed_phones)
+
+        predicted_ids = torch.argmax(logits, dim=-1)
+        transcription = bundle.tokenizer.batch_decode(predicted_ids)[0]
+    except (RecognitionError, UnsupportedPhoneError, ValueError):
         raise
     except Exception as exc:
         raise RecognitionError(f"speech recognition failed: {exc}") from exc
     return normalize_ipa(str(transcription))
 
 
-def _recognize_with_inventory(
-    recognizer: Any,
-    wav_path: Path,
-    allowed_phones: Iterable[str],
-) -> str:
-    phones = tuple(dict.fromkeys(normalize_ipa(phone) for phone in allowed_phones))
-    if not phones:
+def _read_audio(path: Path) -> np.ndarray[Any, np.dtype[np.float32]]:
+    try:
+        with wave.open(str(path), "rb") as wav_file:
+            channels = wav_file.getnchannels()
+            sample_width = wav_file.getsampwidth()
+            sample_rate = wav_file.getframerate()
+            frame_count = wav_file.getnframes()
+            frames = wav_file.readframes(frame_count)
+    except (OSError, wave.Error) as exc:
+        raise RecognitionError(f"could not read WAV file: {exc}") from exc
+
+    if channels < 1 or sample_rate < 1 or frame_count < 1:
+        raise RecognitionError("WAV file contains no usable audio")
+    if sample_width != 2:
+        raise RecognitionError("WAV input must contain 16-bit PCM samples")
+
+    audio = np.frombuffer(frames, dtype="<i2").astype(np.float32)
+    if channels > 1:
+        audio = audio.reshape(-1, channels).mean(axis=1)
+    audio /= float(np.iinfo(np.int16).max)
+
+    if sample_rate != TARGET_SAMPLE_RATE:
+        divisor = math.gcd(sample_rate, TARGET_SAMPLE_RATE)
+        audio = resample_poly(
+            audio,
+            TARGET_SAMPLE_RATE // divisor,
+            sample_rate // divisor,
+        ).astype(np.float32)
+    return audio
+
+
+def _mask_logits(logits: Any, tokenizer: Any, phones: Iterable[str]) -> Any:
+    normalized_phones = tuple(dict.fromkeys(normalize_ipa(phone) for phone in phones))
+    if not normalized_phones:
         raise ValueError("allowed_phones must contain at least one phone")
 
-    model_inventory = recognizer.lm.inventory.unit
-    unsupported = [phone for phone in phones if phone not in model_inventory]
+    vocabulary = tokenizer.get_vocab()
+    unsupported = [phone for phone in normalized_phones if phone not in vocabulary]
     if unsupported:
         raise UnsupportedPhoneError(
-            "phones unsupported by the Allosaurus model: " + ", ".join(unsupported)
+            "phones unsupported by the Wav2Vec2Phoneme model: " + ", ".join(unsupported)
         )
 
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".phones", encoding="utf-8", delete=False
-    ) as inventory_file:
-        inventory_path = Path(inventory_file.name)
-        inventory_file.write("\n".join(phones) + "\n")
-    try:
-        return str(recognizer.recognize(str(wav_path), lang_id=str(inventory_path)))
-    finally:
-        inventory_path.unlink(missing_ok=True)
+    allowed_ids = {vocabulary[phone] for phone in normalized_phones}
+    allowed_ids.update(tokenizer.all_special_ids)
+    disallowed_ids = sorted(set(range(logits.shape[-1])) - allowed_ids)
+    if disallowed_ids:
+        # Model outputs created in inference mode cannot be changed in place
+        # after leaving that context; cloning also preserves the caller's data.
+        logits = logits.clone() if hasattr(logits, "clone") else logits.copy()
+        logits[..., disallowed_ids] = float("-inf")
+    return logits
 
 
-@lru_cache(maxsize=1)
-def _recognizer() -> Any:
-    from allosaurus.app import read_recognizer
+@lru_cache(maxsize=2)
+def _model_bundle(model_id: str) -> _ModelBundle:
+    from huggingface_hub import hf_hub_download
+    from transformers import (
+        AutoModelForCTC,
+        Wav2Vec2CTCTokenizer,
+        Wav2Vec2FeatureExtractor,
+    )
 
-    return read_recognizer()
+    vocab_file = hf_hub_download(model_id, filename="vocab.json")
+    tokenizer = Wav2Vec2CTCTokenizer(  # type: ignore[no-untyped-call]
+        vocab_file,
+        unk_token="<unk>",
+        pad_token="<pad>",
+        word_delimiter_token=None,
+    )
+    feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(model_id)
+    model = AutoModelForCTC.from_pretrained(model_id)
+    model.eval()
+    return _ModelBundle(
+        tokenizer=tokenizer,
+        feature_extractor=feature_extractor,
+        model=model,
+    )

@@ -8,13 +8,13 @@ authors = [
 ]
 requires-python = ">=3.9"
 dependencies = [
-    "allosaurus>=1.0.2",
-    "numba<0.60",
     "numpy==1.26.4",
     "panphon==0.21.2",
-    "resampy==0.4.3",
+    "scipy>=1.10,<1.14",
     "setuptools<81",
     "sounddevice>=0.5.5",
+    "torch>=2.0,<3",
+    "transformers>=4.45,<5",
 ]
 
 [dependency-groups]
@@ -49,5 +49,5 @@ files = ["src", "tests"]
 warn_unreachable = true
 
 [[tool.mypy.overrides]]
-module = ["allosaurus.*", "panphon.*", "sounddevice.*"]
+module = ["panphon.*", "scipy.*", "sounddevice.*", "transformers", "transformers.*"]
 ignore_missing_imports = true

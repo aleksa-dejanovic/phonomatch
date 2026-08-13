@@ -12,8 +12,10 @@ from .ipa import normalize_ipa
 from .matching import decide_match, distance_ratio
 from .models import AnalysisResult, CandidateScore, MatchResult
 from .phonetics import phones_for_words
+from .recognition import DEFAULT_MODEL_ID
 
 __all__ = [
+    "DEFAULT_MODEL_ID",
     "DEFAULT_WORDS",
     "AnalysisResult",
     "AudioRecordingError",
