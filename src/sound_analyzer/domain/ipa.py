@@ -1,4 +1,4 @@
-"""IPA text normalization shared by recognition and matching."""
+"""Pure IPA text normalization shared by recognition and matching."""
 
 import unicodedata
 

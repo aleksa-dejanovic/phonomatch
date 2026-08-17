@@ -7,7 +7,11 @@ from typing import ClassVar
 import numpy as np
 
 from sound_analyzer import RecognitionError, UnsupportedPhoneError
-from sound_analyzer.recognition import TARGET_SAMPLE_RATE, _mask_logits, _read_audio
+from sound_analyzer.infrastructure.recognition import (
+    TARGET_SAMPLE_RATE,
+    _mask_logits,
+    _read_audio,
+)
 
 
 class _Tokenizer:

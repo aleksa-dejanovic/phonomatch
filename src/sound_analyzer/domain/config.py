@@ -1,4 +1,4 @@
-"""Application defaults and validated matching configuration."""
+"""Domain defaults and validated matching configuration."""
 
 from __future__ import annotations
 

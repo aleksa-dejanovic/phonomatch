@@ -1,4 +1,4 @@
-"""Public result models returned by the analyzer."""
+"""Result models returned by the analyzer."""
 
 from __future__ import annotations
 

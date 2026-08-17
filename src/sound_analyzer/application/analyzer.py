@@ -7,16 +7,16 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Optional, Union
 
-from .audio import recorded_audio
-from .config import DEFAULT_SETTINGS, DEFAULT_WORDS, MatchSettings
-from .matching import decide_match
-from .models import AnalysisResult
-from .phonetics import (
+from ..domain.config import DEFAULT_SETTINGS, DEFAULT_WORDS, MatchSettings
+from ..domain.matching import decide_match
+from ..domain.models import AnalysisResult
+from ..infrastructure.audio import recorded_audio
+from ..infrastructure.phonetics import (
     phones_for_words,
     phonetic_distance,
     phonetic_maximum_distance,
 )
-from .recognition import (
+from ..infrastructure.recognition import (
     DEFAULT_MODEL_ID,
     DEFAULT_MODEL_REVISION,
     load_model,

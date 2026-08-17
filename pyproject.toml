@@ -29,7 +29,7 @@ dev = [
 ]
 
 [project.scripts]
-sound-analyzer = "sound_analyzer.cli:main"
+sound-analyzer = "sound_analyzer.interfaces.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.12.2,<0.13.0"]

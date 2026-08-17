@@ -7,8 +7,8 @@ import re
 from collections.abc import Sequence
 from typing import TextIO
 
-from .config import MatchSettings
-from .models import AnalysisResult
+from ..domain.config import MatchSettings
+from ..domain.models import AnalysisResult
 
 _ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 

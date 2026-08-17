@@ -1,7 +1,7 @@
 import unittest
 
 from sound_analyzer import DEFAULT_WORDS, phones_for_words
-from sound_analyzer.phonetics import (
+from sound_analyzer.infrastructure.phonetics import (
     phonetic_distance,
     phonetic_maximum_distance,
 )

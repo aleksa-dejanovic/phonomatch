@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from functools import lru_cache
 from typing import Any
 
-from .ipa import normalize_ipa
+from ..domain.ipa import normalize_ipa
 
 
 def phonetic_distance(ipa_a: str, ipa_b: str) -> float:

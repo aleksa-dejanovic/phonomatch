@@ -2,7 +2,7 @@ import unittest
 from dataclasses import replace
 
 from sound_analyzer import MatchSettings, SoundAnalyzer
-from sound_analyzer.presentation import render_result
+from sound_analyzer.interfaces.console import render_result
 
 
 class PresentationTests(unittest.TestCase):

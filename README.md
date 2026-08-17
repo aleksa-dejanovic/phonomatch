@@ -126,19 +126,24 @@ The default acceptance rules are:
 All checks must pass. Confidence is relative to the configured vocabulary; it
 does not replace the absolute distance check.
 
-The vocabulary is `DEFAULT_WORDS` in `src/sound_analyzer/config.py`. The decoder
-inventory is derived automatically from it. Unsupported model phones produce a
-clear error instead of silently degrading recognition.
+The vocabulary is `DEFAULT_WORDS` in `src/sound_analyzer/domain/config.py`.
+The decoder inventory is derived automatically from it. Unsupported model
+phones produce a clear error instead of silently degrading recognition.
 
 ## Development
 
 ```console
 uv sync --group dev
-uv run ruff format --check .
-uv run ruff check .
-uv run mypy
-uv run python -m unittest discover -s tests -v
-uv build
+./scripts/check.sh
+```
+
+The script verifies patch whitespace, lockfile consistency, formatting, lint,
+strict typing, unit tests, and both distribution formats. Build artifacts are
+created in a temporary directory and removed automatically. Before a release,
+also verify that the checked-in dependency license bundle is current:
+
+```console
+./scripts/check.sh --release
 ```
 
 Apply automatic formatting and safe lint fixes with:

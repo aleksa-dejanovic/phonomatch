@@ -25,7 +25,7 @@ class AnalyzerTests(unittest.TestCase):
             model_revision="immutable-commit",
         )
         with patch(
-            "sound_analyzer.analyzer.speech_to_ipa", return_value="ɡrun"
+            "sound_analyzer.application.analyzer.speech_to_ipa", return_value="ɡrun"
         ) as recognize:
             analyzer.analyze_file("recording.wav")
 
@@ -41,7 +41,7 @@ class AnalyzerTests(unittest.TestCase):
             model_id="example/model",
             model_revision="immutable-commit",
         )
-        with patch("sound_analyzer.analyzer.load_model") as preload:
+        with patch("sound_analyzer.application.analyzer.load_model") as preload:
             analyzer.load_model()
 
         preload.assert_called_once_with("example/model", "immutable-commit")
@@ -57,7 +57,7 @@ class AnalyzerTests(unittest.TestCase):
 
         expected = analyzer.match_ipa("gɾun")
         with (
-            patch("sound_analyzer.analyzer.recorded_audio", fake_recording),
+            patch("sound_analyzer.application.analyzer.recorded_audio", fake_recording),
             patch.object(
                 analyzer,
                 "load_model",

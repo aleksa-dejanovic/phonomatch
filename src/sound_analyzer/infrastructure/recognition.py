@@ -14,8 +14,8 @@ from typing import Any, Optional, Union
 import numpy as np
 from scipy.signal import resample_poly
 
-from .exceptions import RecognitionError, UnsupportedPhoneError
-from .ipa import normalize_ipa
+from ..domain.ipa import normalize_ipa
+from ..exceptions import RecognitionError, UnsupportedPhoneError
 
 DEFAULT_MODEL_ID = "facebook/wav2vec2-lv-60-espeak-cv-ft"
 DEFAULT_MODEL_REVISION = "ae45363bf3413b374fecd9dc8bc1df0e24c3b7f4"

@@ -1,4 +1,4 @@
-"""Pure functions for ranking and accepting phonetic candidates."""
+"""Domain functions for ranking and accepting phonetic candidates."""
 
 from __future__ import annotations
 

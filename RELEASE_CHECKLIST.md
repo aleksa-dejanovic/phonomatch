@@ -10,26 +10,21 @@ platform.
    uv sync --locked --group dev
    ```
 
-2. Generate the runtime license inventory and bundled texts:
+2. Run every automated check, including regeneration and comparison of the
+   runtime license inventory and bundled texts in a temporary directory:
 
    ```console
-   uv run python scripts/generate_license_bundle.py
-   git diff --exit-code -- DEPENDENCY_LICENSE_REPORT.md THIRD_PARTY_LICENSES
+   ./scripts/check.sh --release
    ```
 
 3. Confirm the default model ID and immutable revision in
-   `sound_analyzer.recognition`. If deploying a local model directory, record
-   the model files' origin, revision, checksums, and license separately.
+   `sound_analyzer.infrastructure.recognition`. If deploying a local model
+   directory, record the model files' origin, revision, checksums, and license
+   separately.
 
-4. Run all release checks:
-
-   ```console
-   uv run ruff format --check .
-   uv run ruff check .
-   uv run mypy
-   uv run python -m unittest discover -s tests -v
-   uv build
-   ```
+4. Confirm the check script completed successfully. It validates formatting,
+   lint, strict typing, unit tests, lockfile consistency, package builds, patch
+   whitespace, and generated licensing artifacts.
 
 5. Test recognition on the target machine with networking disabled after the
    model has been provisioned. This verifies that the pinned files are present

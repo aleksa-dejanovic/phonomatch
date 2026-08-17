@@ -7,10 +7,10 @@ import sys
 from collections.abc import Sequence
 from typing import Optional
 
-from .analyzer import SoundAnalyzer
-from .config import MatchSettings
-from .exceptions import SoundAnalyzerError
-from .presentation import Palette, color_enabled, render_result
+from ..application.analyzer import SoundAnalyzer
+from ..domain.config import MatchSettings
+from ..exceptions import SoundAnalyzerError
+from .console import Palette, color_enabled, render_result
 
 
 def build_parser() -> argparse.ArgumentParser:
