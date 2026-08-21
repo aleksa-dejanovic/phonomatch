@@ -16,25 +16,47 @@ separated from the runner-up, or not confident enough.
 ## Requirements
 
 - Python 3.9 or newer
-- [`uv`](https://docs.astral.sh/uv/)
 - A microphone and PortAudio for live recording
 - Approximately 1.3 GB of disk space for the default model
 
-Install PortAudio on Debian or Ubuntu:
+## Platform support
+
+PhoneMatch supports Linux, macOS, and Windows. Microphone access must be
+permitted for the terminal or Python environment that runs the command.
+
+On Linux, install PortAudio with your system package manager before installing
+PhoneMatch. For Debian or Ubuntu:
 
 ```console
 sudo apt install libportaudio2
 ```
 
-On macOS with Homebrew:
+When installed with `pip`, the `sounddevice` dependency supplies PortAudio on
+macOS and Windows. If macOS cannot find the library, install it with Homebrew:
 
 ```console
 brew install portaudio
 ```
 
-## Install and run
+If Windows cannot detect an input device, first check its microphone privacy
+settings and confirm that the selected input device works in another
+application.
 
-From the repository root:
+## Install
+
+Install from PyPI:
+
+```console
+python -m pip install phonematch
+```
+
+Then confirm the command is available:
+
+```console
+phonematch --help
+```
+
+For a development checkout, use [`uv`](https://docs.astral.sh/uv/):
 
 ```console
 uv sync
@@ -42,8 +64,7 @@ uv run phonematch
 ```
 
 Use `uv sync --locked` in production and CI so dependency resolution cannot
-change after review. Linux and Windows installations use the CPU-only PyTorch
-index; this avoids bundling unused CUDA libraries in the recognition service.
+change after review.
 
 The first run downloads `facebook/wav2vec2-lv-60-espeak-cv-ft` at the pinned
 revision `ae45363bf3413b374fecd9dc8bc1df0e24c3b7f4`. Later runs reuse the local
@@ -58,15 +79,24 @@ ends and recognition starts, and reports the recognition and matching time.
 Keeping the loaded analyzer instance alive also keeps the model resident for
 subsequent requests.
 
+## Privacy and network access
+
+PhoneMatch records audio from the selected microphone and processes it locally.
+It does not upload recorded audio to a PhoneMatch service or any other remote
+service. The first use of the default model requires network access to download
+the pinned model files from Hugging Face; later uses read them from the local
+cache. You can instead configure a compatible local model path to avoid that
+download.
+
 Useful CLI options:
 
 ```console
-uv run phonematch --seconds 3
-uv run phonematch --phrase --seconds 5
-uv run phonematch --phrase --beam-size 96 --max-words 8
-uv run phonematch --max-distance 0.08
-uv run phonematch --color never
-uv run phonematch --help
+phonematch --seconds 3
+phonematch --phrase --seconds 5
+phonematch --phrase --beam-size 96 --max-words 8
+phonematch --max-distance 0.08
+phonematch --color never
+phonematch --help
 ```
 
 Exit codes are `0` for an accepted match, `2` for an ambiguous or unknown

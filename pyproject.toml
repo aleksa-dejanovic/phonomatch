@@ -5,6 +5,16 @@ description = "Record speech, transcribe it to IPA, and match it against a word 
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
+keywords = ["audio", "ctc", "ipa", "phonetics", "speech-recognition", "wav2vec2"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Topic :: Multimedia :: Sound/Audio :: Analysis",
+]
 authors = [
     { name = "Aleksa Dejanovic", email = "dejanovicaleksa234@gmail.com" }
 ]
@@ -18,6 +28,11 @@ dependencies = [
     "torch>=2.0,<3",
     "transformers>=4.45,<5",
 ]
+
+[project.urls]
+Homepage = "https://github.com/aleksa-dejanovic/phonematch"
+Repository = "https://github.com/aleksa-dejanovic/phonematch"
+Issues = "https://github.com/aleksa-dejanovic/phonematch/issues"
 
 [dependency-groups]
 dev = [
