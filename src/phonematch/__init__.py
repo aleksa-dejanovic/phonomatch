@@ -1,6 +1,6 @@
 """Record speech, transcribe it to IPA, and match it against known words."""
 
-from .application import SoundAnalyzer, listen_and_match
+from .application import PhoneMatch, listen_and_match
 from .domain import (
     DEFAULT_WORDS,
     AnalysisResult,
@@ -15,8 +15,8 @@ from .domain import (
 )
 from .exceptions import (
     AudioRecordingError,
+    PhoneMatchError,
     RecognitionError,
-    SoundAnalyzerError,
     UnsupportedPhoneError,
 )
 from .infrastructure.phonetics import phones_for_words
@@ -35,10 +35,10 @@ __all__ = [
     "CandidateScore",
     "MatchResult",
     "MatchSettings",
+    "PhoneMatch",
+    "PhoneMatchError",
     "PhraseAnalysisResult",
     "RecognitionError",
-    "SoundAnalyzer",
-    "SoundAnalyzerError",
     "UnsupportedPhoneError",
     "WordAnalysisResult",
     "decide_match",

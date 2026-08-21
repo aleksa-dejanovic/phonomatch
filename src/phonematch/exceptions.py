@@ -1,15 +1,15 @@
-"""Exceptions raised by sound-analyzer integrations."""
+"""Exceptions raised by phonematch integrations."""
 
 
-class SoundAnalyzerError(Exception):
-    """Base class for expected sound-analyzer failures."""
+class PhoneMatchError(Exception):
+    """Base class for expected phonematch failures."""
 
 
-class AudioRecordingError(SoundAnalyzerError):
+class AudioRecordingError(PhoneMatchError):
     """Raised when microphone capture fails."""
 
 
-class RecognitionError(SoundAnalyzerError):
+class RecognitionError(PhoneMatchError):
     """Raised when Wav2Vec2Phoneme cannot transcribe a recording."""
 
 

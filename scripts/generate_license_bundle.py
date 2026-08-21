@@ -12,7 +12,7 @@ from pathlib import Path
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
-PROJECT = "sound-analyzer"
+PROJECT = "phonematch"
 LICENSE_NAMES = ("license", "licence", "copying", "notice", "copyright")
 STRONG_COPYLEFT = re.compile(r"(?<!L)GPL(?:-|\s|$)|AGPL", re.IGNORECASE)
 

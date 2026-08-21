@@ -1,7 +1,7 @@
 import math
 import unittest
 
-from sound_analyzer import MatchSettings, decide_match, distance_ratio
+from phonematch import MatchSettings, decide_match, distance_ratio
 
 
 def simple_distance(a: str, b: str) -> float:

@@ -1,5 +1,5 @@
 [project]
-name = "sound-analyzer"
+name = "phonematch"
 version = "0.1.0"
 description = "Record speech, transcribe it to IPA, and match it against a word list"
 readme = "README.md"
@@ -29,7 +29,7 @@ dev = [
 ]
 
 [project.scripts]
-sound-analyzer = "sound_analyzer.interfaces.cli:main"
+phonematch = "phonematch.interfaces.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.12.2,<0.13.0"]

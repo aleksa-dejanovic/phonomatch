@@ -1,6 +1,6 @@
-# Sound Analyzer
+# PhoneMatch
 
-Sound Analyzer records a short utterance, recognizes its phones with Meta's
+PhoneMatch records a short utterance, recognizes its phones with Meta's
 Wav2Vec2Phoneme model, and compares the resulting IPA transcription with a
 configurable vocabulary using PanPhon's weighted feature edit distance.
 
@@ -38,7 +38,7 @@ From the repository root:
 
 ```console
 uv sync
-uv run sound-analyzer
+uv run phonematch
 ```
 
 Use `uv sync --locked` in production and CI so dependency resolution cannot
@@ -61,12 +61,12 @@ subsequent requests.
 Useful CLI options:
 
 ```console
-uv run sound-analyzer --seconds 3
-uv run sound-analyzer --phrase --seconds 5
-uv run sound-analyzer --phrase --beam-size 96 --max-words 8
-uv run sound-analyzer --max-distance 0.08
-uv run sound-analyzer --color never
-uv run sound-analyzer --help
+uv run phonematch --seconds 3
+uv run phonematch --phrase --seconds 5
+uv run phonematch --phrase --beam-size 96 --max-words 8
+uv run phonematch --max-distance 0.08
+uv run phonematch --color never
+uv run phonematch --help
 ```
 
 Exit codes are `0` for an accepted match, `2` for an ambiguous or unknown
@@ -75,14 +75,14 @@ utterance, and `1` for an operational error.
 ## Python API
 
 ```python
-from sound_analyzer import MatchSettings, SoundAnalyzer
+from phonematch import MatchSettings, PhoneMatch
 
 words = {
     "grun": "ɡrun",
     "shaki": "ʃaki",
 }
 
-analyzer = SoundAnalyzer(
+analyzer = PhoneMatch(
     words,
     MatchSettings(max_distance_ratio=0.10),
 )
@@ -144,7 +144,7 @@ These options only affect phrase mode.
 You can use a compatible local or Hugging Face model identifier:
 
 ```python
-analyzer = SoundAnalyzer(
+analyzer = PhoneMatch(
     words,
     model_id="/path/to/local/model",
     model_revision=None,
@@ -154,7 +154,7 @@ analyzer = SoundAnalyzer(
 The model must be compatible with `AutoModelForCTC` and its tokenizer must use
 phone tokens matching the vocabulary's normalized IPA phones.
 
-Expected operational exceptions inherit from `SoundAnalyzerError`:
+Expected operational exceptions inherit from `PhoneMatchError`:
 
 - `AudioRecordingError`
 - `RecognitionError`
@@ -173,7 +173,7 @@ The default acceptance rules are:
 All checks must pass. Confidence is relative to the configured vocabulary; it
 does not replace the absolute distance check.
 
-The vocabulary is `DEFAULT_WORDS` in `src/sound_analyzer/domain/config.py`.
+The vocabulary is `DEFAULT_WORDS` in `src/phonematch/domain/config.py`.
 The decoder inventory is derived automatically from it. Unsupported model
 phones produce a clear error instead of silently degrading recognition.
 

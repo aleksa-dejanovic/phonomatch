@@ -1,4 +1,4 @@
-"""Command-line interface for sound-analyzer."""
+"""Command-line interface for phonematch."""
 
 from __future__ import annotations
 
@@ -7,15 +7,15 @@ import sys
 from collections.abc import Sequence
 from typing import Optional
 
-from ..application.analyzer import SoundAnalyzer
+from ..application.analyzer import PhoneMatch
 from ..domain.config import MatchSettings
-from ..exceptions import SoundAnalyzerError
+from ..exceptions import PhoneMatchError
 from .console import Palette, color_enabled, render_phrase_result, render_result
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="sound-analyzer",
+        prog="phonematch",
         description="Match a spoken word using its IPA transcription.",
     )
     parser.add_argument(
@@ -67,7 +67,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(palette.cyan("■ Recording stopped — recognizing..."), flush=True)
 
     try:
-        analyzer = SoundAnalyzer(settings=settings)
+        analyzer = PhoneMatch(settings=settings)
         print(palette.cyan("◌ Loading speech model..."), flush=True)
         analyzer.load_model()
         print(palette.green("● Model ready"), flush=True)
@@ -95,7 +95,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print()
             print(render_result(word_result, settings, color=use_color))
             return 0 if word_result.match.accepted else 2
-    except (SoundAnalyzerError, ValueError) as exc:
+    except (PhoneMatchError, ValueError) as exc:
         error_palette = Palette(color_enabled(args.color, sys.stderr))
         print(error_palette.red(f"Error: {exc}"), file=sys.stderr)
         return 1

@@ -18,7 +18,7 @@ platform.
    ```
 
 3. Confirm the default model ID and immutable revision in
-   `sound_analyzer.infrastructure.recognition`. If deploying a local model
+   `phonematch.infrastructure.recognition`. If deploying a local model
    directory, record the model files' origin, revision, checksums, and license
    separately.
 

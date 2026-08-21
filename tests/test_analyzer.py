@@ -4,8 +4,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
-from sound_analyzer import SoundAnalyzer
-from sound_analyzer.infrastructure.recognition import (
+from phonematch import PhoneMatch
+from phonematch.infrastructure.recognition import (
     PhraseTranscription,
     RecognizedWord,
 )
@@ -14,22 +14,22 @@ from sound_analyzer.infrastructure.recognition import (
 class AnalyzerTests(unittest.TestCase):
     def test_empty_vocabulary_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "at least one"):
-            SoundAnalyzer({})
+            PhoneMatch({})
 
     def test_match_ipa_returns_analysis_result(self) -> None:
-        result = SoundAnalyzer({"grun": "ɡrun", "naku": "naku"}).match_ipa("gɾun")
+        result = PhoneMatch({"grun": "ɡrun", "naku": "naku"}).match_ipa("gɾun")
         self.assertEqual(result.recognized_ipa, "gɾun")
         self.assertTrue(result.match.accepted)
         self.assertEqual(result.match.best_candidate.word, "grun")
 
     def test_analyze_file_forwards_model_revision(self) -> None:
-        analyzer = SoundAnalyzer(
+        analyzer = PhoneMatch(
             {"grun": "ɡrun", "naku": "naku"},
             model_id="example/model",
             model_revision="immutable-commit",
         )
         with patch(
-            "sound_analyzer.application.analyzer.speech_to_ipa", return_value="ɡrun"
+            "phonematch.application.analyzer.speech_to_ipa", return_value="ɡrun"
         ) as recognize:
             analyzer.analyze_file("recording.wav")
 
@@ -40,18 +40,18 @@ class AnalyzerTests(unittest.TestCase):
         )
 
     def test_load_model_forwards_configured_model(self) -> None:
-        analyzer = SoundAnalyzer(
+        analyzer = PhoneMatch(
             {"grun": "ɡrun", "naku": "naku"},
             model_id="example/model",
             model_revision="immutable-commit",
         )
-        with patch("sound_analyzer.application.analyzer.load_model") as preload:
+        with patch("phonematch.application.analyzer.load_model") as preload:
             analyzer.load_model()
 
         preload.assert_called_once_with("example/model", "immutable-commit")
 
     def test_listen_reports_when_recording_is_complete(self) -> None:
-        analyzer = SoundAnalyzer({"grun": "ɡrun", "naku": "naku"})
+        analyzer = PhoneMatch({"grun": "ɡrun", "naku": "naku"})
         events: list[str] = []
 
         @contextmanager
@@ -61,7 +61,7 @@ class AnalyzerTests(unittest.TestCase):
 
         expected = analyzer.match_ipa("gɾun")
         with (
-            patch("sound_analyzer.application.analyzer.recorded_audio", fake_recording),
+            patch("phonematch.application.analyzer.recorded_audio", fake_recording),
             patch.object(
                 analyzer,
                 "load_model",
@@ -81,7 +81,7 @@ class AnalyzerTests(unittest.TestCase):
         preload.assert_called_once_with()
 
     def test_analyze_phrase_file_matches_each_word_independently(self) -> None:
-        analyzer = SoundAnalyzer({"grun": "ɡrun", "naku": "naku"})
+        analyzer = PhoneMatch({"grun": "ɡrun", "naku": "naku"})
         transcription = PhraseTranscription(
             words=(
                 RecognizedWord("grun", "ɡrun", 0.1, 0.6),
@@ -91,7 +91,7 @@ class AnalyzerTests(unittest.TestCase):
             alternative=("grun", "grun"),
         )
         with patch(
-            "sound_analyzer.application.analyzer.speech_to_phrase",
+            "phonematch.application.analyzer.speech_to_phrase",
             return_value=transcription,
         ):
             result = analyzer.analyze_phrase_file("recording.wav")
@@ -104,14 +104,14 @@ class AnalyzerTests(unittest.TestCase):
         self.assertEqual(result.alternative_words, ("grun", "grun"))
 
     def test_ambiguous_phrase_sequence_is_rejected(self) -> None:
-        analyzer = SoundAnalyzer({"grun": "ɡrun"})
+        analyzer = PhoneMatch({"grun": "ɡrun"})
         transcription = PhraseTranscription(
             words=(RecognizedWord("grun", "ɡrun", 0.0, 0.5),),
             confidence=0.5,
             alternative=("grun", "grun"),
         )
         with patch(
-            "sound_analyzer.application.analyzer.speech_to_phrase",
+            "phonematch.application.analyzer.speech_to_phrase",
             return_value=transcription,
         ):
             result = analyzer.analyze_phrase_file("recording.wav")
