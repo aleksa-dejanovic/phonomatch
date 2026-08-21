@@ -186,12 +186,7 @@ uv sync --group dev
 
 The script verifies patch whitespace, lockfile consistency, formatting, lint,
 strict typing, unit tests, and both distribution formats. Build artifacts are
-created in a temporary directory and removed automatically. Before a release,
-also verify that the checked-in dependency license bundle is current:
-
-```console
-./scripts/check.sh --release
-```
+created in a temporary directory and removed automatically.
 
 Apply automatic formatting and safe lint fixes with:
 
@@ -202,13 +197,3 @@ uv run ruff check . --fix
 
 Unit tests do not download the Wav2Vec2 model. A real-model smoke test requires
 network access on its first run and can be performed with the installed CLI.
-
-## Licensing
-
-This branch does not depend on GPL-licensed Allosaurus. The default Meta model
-is published under Apache License 2.0, as are Hugging Face Transformers. PyTorch
-uses a BSD-style license. Exact runtime licenses are collected under
-[`THIRD_PARTY_LICENSES`](THIRD_PARTY_LICENSES), with the generated inventory in
-[`DEPENDENCY_LICENSE_REPORT.md`](DEPENDENCY_LICENSE_REPORT.md). Follow the
-[`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md) and verify all distribution
-obligations with qualified counsel before shipping a commercial product.
