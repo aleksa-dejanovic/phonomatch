@@ -5,7 +5,7 @@ from phonematch import MatchSettings, decide_match, distance_ratio
 
 
 def simple_distance(a: str, b: str) -> float:
-    substitutions = sum(left != right for left, right in zip(a, b))
+    substitutions = sum(left != right for left, right in zip(a, b, strict=False))
     return float(substitutions + abs(len(a) - len(b)))
 
 

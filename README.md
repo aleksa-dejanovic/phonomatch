@@ -15,7 +15,7 @@ separated from the runner-up, or not confident enough.
 
 ## Requirements
 
-- Python 3.9 or newer
+- Python 3.10 or newer
 - A microphone and PortAudio for live recording
 - Approximately 1.3 GB of disk space for the default model
 
@@ -47,8 +47,14 @@ application.
 Install from PyPI:
 
 ```console
-python -m pip install phonematch
+# Linux and Windows: prefer PyTorch's CPU-only wheels. This avoids installing
+# the NVIDIA CUDA runtime packages pulled in by the default PyPI Linux wheels.
+python -m pip install --extra-index-url https://download.pytorch.org/whl/cpu phonematch
 ```
+
+On macOS, `python -m pip install phonematch` installs the platform-native
+PyTorch wheel; it does not include NVIDIA CUDA libraries. The application uses
+CPU inference, so a GPU build is not needed on any platform.
 
 Then confirm the command is available:
 

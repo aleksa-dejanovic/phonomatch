@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 
 from ..domain.config import DEFAULT_SETTINGS, DEFAULT_WORDS, MatchSettings
 from ..domain.matching import decide_match
@@ -49,7 +49,7 @@ class PhoneMatch:
         """Return a defensive copy of the analyzer vocabulary."""
         return dict(self._words)
 
-    def analyze_file(self, wav_path: Union[str, Path]) -> AnalysisResult:
+    def analyze_file(self, wav_path: str | Path) -> AnalysisResult:
         """Transcribe and match an existing WAV file."""
         started_at = time.perf_counter()
         ipa = speech_to_ipa(
@@ -67,7 +67,7 @@ class PhoneMatch:
 
     def analyze_phrase_file(
         self,
-        wav_path: Union[str, Path],
+        wav_path: str | Path,
         *,
         beam_size: int = 64,
         max_words: int = 12,

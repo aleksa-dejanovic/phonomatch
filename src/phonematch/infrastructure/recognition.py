@@ -9,7 +9,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 import numpy as np
 from scipy.signal import resample_poly
@@ -64,7 +64,7 @@ def load_model(
 
 
 def speech_to_ipa(
-    wav_path: Union[str, Path],
+    wav_path: str | Path,
     allowed_phones: Optional[Iterable[str]] = None,
     *,
     model_id: str = DEFAULT_MODEL_ID,
@@ -108,7 +108,7 @@ def speech_to_ipa(
 
 
 def speech_to_phrase(
-    wav_path: Union[str, Path],
+    wav_path: str | Path,
     words: Mapping[str, str],
     *,
     model_id: str = DEFAULT_MODEL_ID,
