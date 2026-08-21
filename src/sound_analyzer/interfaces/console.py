@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from typing import TextIO
 
 from ..domain.config import MatchSettings
-from ..domain.models import AnalysisResult
+from ..domain.models import AnalysisResult, PhraseAnalysisResult
 
 _ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -119,6 +119,58 @@ def render_result(
     lines.extend(("", palette.bold("Acceptance checks")))
     check_table = _table(("Check", "Observed", "Required", "Status"), check_rows)
     for line in check_table:
+        line = line.replace("PASS", palette.green("PASS"))
+        line = line.replace("FAIL", palette.red("FAIL"))
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def render_phrase_result(
+    result: PhraseAnalysisResult,
+    settings: MatchSettings,
+    *,
+    color: bool = False,
+) -> str:
+    """Render phrase-level and per-word recognition results."""
+    palette = Palette(color)
+    decision = (
+        palette.green("✓ PHRASE ACCEPTED")
+        if result.accepted
+        else palette.red("✗ PHRASE REJECTED")
+    )
+    lines = [
+        palette.cyan(palette.bold("SOUND ANALYZER")),
+        palette.dim("=" * 72),
+        f"Heard    /{result.recognized_ipa}/",
+        f"Result   {decision}",
+        "Sequence confidence  "
+        f"{result.sequence_confidence:.1%} "
+        f"(required ≥ {settings.min_confidence:.1%})",
+    ]
+    if result.recognition_seconds is not None:
+        lines.append(f"Time     {result.recognition_seconds:.2f} s")
+    if result.alternative_words is not None:
+        lines.append(f"Runner-up  {' '.join(result.alternative_words)}")
+
+    rows = []
+    for index, word in enumerate(result.words, start=1):
+        candidate = word.match.best_candidate
+        rows.append(
+            (
+                str(index),
+                candidate.word,
+                f"/{word.recognized_ipa}/",
+                f"{word.start_seconds:.2f}–{word.end_seconds:.2f}s",
+                f"{candidate.distance_ratio:.1%}",
+                f"{candidate.confidence:.1%}",
+                "PASS" if word.match.accepted else "FAIL",
+            )
+        )
+    lines.extend(("", palette.bold("Words")))
+    table = _table(
+        ("#", "Word", "IPA", "Time", "Distance", "Confidence", "Status"), rows
+    )
+    for line in table:
         line = line.replace("PASS", palette.green("PASS"))
         line = line.replace("FAIL", palette.red("FAIL"))
         lines.append(line)

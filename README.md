@@ -4,6 +4,11 @@ Sound Analyzer records a short utterance, recognizes its phones with Meta's
 Wav2Vec2Phoneme model, and compares the resulting IPA transcription with a
 configurable vocabulary using PanPhon's weighted feature edit distance.
 
+It can recognize either one word or a phrase containing an arbitrary sequence
+of configured words. Phrase mode uses lexicon-constrained CTC beam search to
+infer word boundaries without requiring pauses, then aligns and evaluates each
+word independently.
+
 The application runs locally. It restricts CTC decoding to the phones in the
 configured vocabulary and rejects results that are too distant, insufficiently
 separated from the runner-up, or not confident enough.
@@ -57,6 +62,8 @@ Useful CLI options:
 
 ```console
 uv run sound-analyzer --seconds 3
+uv run sound-analyzer --phrase --seconds 5
+uv run sound-analyzer --phrase --beam-size 96 --max-words 8
 uv run sound-analyzer --max-distance 0.08
 uv run sound-analyzer --color never
 uv run sound-analyzer --help
@@ -86,6 +93,24 @@ result = analyzer.listen(seconds=2)
 # Recognize an existing 16-bit PCM WAV file and match it.
 result = analyzer.analyze_file("recording.wav")
 
+# Decode a sequence of vocabulary words and match each word independently.
+phrase = analyzer.analyze_phrase_file(
+    "phrase.wav",
+    beam_size=64,
+    max_words=12,
+)
+
+for word in phrase.words:
+    print(
+        word.match.best_candidate.word,
+        word.start_seconds,
+        word.end_seconds,
+        word.match.accepted,
+    )
+
+# Record and recognize a phrase. The default recording duration is four seconds.
+phrase = analyzer.listen_for_phrase(seconds=4)
+
 # Match an existing IPA transcription without loading the speech model.
 result = analyzer.match_ipa("gɾun")
 
@@ -93,6 +118,28 @@ print(result.recognized_ipa)
 print(result.match.decision)
 print(result.match.best_candidate.word)
 ```
+
+The original `listen`, `analyze_file`, `match_ipa`, and `listen_and_match`
+single-word APIs are unchanged. Phrase acceptance requires both an unambiguous
+word sequence and successful independent matching of every aligned word.
+
+### Phrase decoding
+
+Phrase mode operates directly on the model's frame-level CTC probabilities.
+Every configured IPA pronunciation is converted to the model's phone tokens
+and inserted into a trie. Beam search can finish a word at a terminal trie node
+and immediately begin any vocabulary word, so boundaries do not depend on
+silence in the recording.
+
+The winning token sequence is Viterbi-aligned back to the model frames. Each
+word receives an approximate start and end time, a recognized IPA segment, and
+the same distance, relative-separation, and confidence checks used by
+single-word recognition. The phrase is rejected when its runner-up sequence is
+too competitive or any individual word fails.
+
+`--beam-size` trades decoding speed and memory for a wider hypothesis search.
+`--max-words` bounds phrase length and prevents unreasonably long segmentations.
+These options only affect phrase mode.
 
 You can use a compatible local or Hugging Face model identifier:
 

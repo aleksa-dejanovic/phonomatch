@@ -5,6 +5,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 from sound_analyzer import SoundAnalyzer
+from sound_analyzer.infrastructure.recognition import (
+    PhraseTranscription,
+    RecognizedWord,
+)
 
 
 class AnalyzerTests(unittest.TestCase):
@@ -75,3 +79,41 @@ class AnalyzerTests(unittest.TestCase):
             ["model_loaded", "recording_started", "recording_complete"],
         )
         preload.assert_called_once_with()
+
+    def test_analyze_phrase_file_matches_each_word_independently(self) -> None:
+        analyzer = SoundAnalyzer({"grun": "ɡrun", "naku": "naku"})
+        transcription = PhraseTranscription(
+            words=(
+                RecognizedWord("grun", "ɡrun", 0.1, 0.6),
+                RecognizedWord("naku", "naku", 0.7, 1.2),
+            ),
+            confidence=0.95,
+            alternative=("grun", "grun"),
+        )
+        with patch(
+            "sound_analyzer.application.analyzer.speech_to_phrase",
+            return_value=transcription,
+        ):
+            result = analyzer.analyze_phrase_file("recording.wav")
+
+        self.assertEqual(
+            tuple(word.match.best_candidate.word for word in result.words),
+            ("grun", "naku"),
+        )
+        self.assertTrue(result.accepted)
+        self.assertEqual(result.alternative_words, ("grun", "grun"))
+
+    def test_ambiguous_phrase_sequence_is_rejected(self) -> None:
+        analyzer = SoundAnalyzer({"grun": "ɡrun"})
+        transcription = PhraseTranscription(
+            words=(RecognizedWord("grun", "ɡrun", 0.0, 0.5),),
+            confidence=0.5,
+            alternative=("grun", "grun"),
+        )
+        with patch(
+            "sound_analyzer.application.analyzer.speech_to_phrase",
+            return_value=transcription,
+        ):
+            result = analyzer.analyze_phrase_file("recording.wav")
+
+        self.assertFalse(result.accepted)

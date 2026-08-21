@@ -10,13 +10,30 @@ from typing import Optional
 from ..application.analyzer import SoundAnalyzer
 from ..domain.config import MatchSettings
 from ..exceptions import SoundAnalyzerError
-from .console import Palette, color_enabled, render_result
+from .console import Palette, color_enabled, render_phrase_result, render_result
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="sound-analyzer",
         description="Match a spoken word using its IPA transcription.",
+    )
+    parser.add_argument(
+        "--phrase",
+        action="store_true",
+        help="recognize a sequence of vocabulary words",
+    )
+    parser.add_argument(
+        "--beam-size",
+        type=_positive_int,
+        default=64,
+        help="phrase decoder beam size (default: 64)",
+    )
+    parser.add_argument(
+        "--max-words",
+        type=_positive_int,
+        default=12,
+        help="maximum words in phrase mode (default: 12)",
     )
     parser.add_argument(
         "--seconds",
@@ -54,19 +71,34 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(palette.cyan("◌ Loading speech model..."), flush=True)
         analyzer.load_model()
         print(palette.green("● Model ready"), flush=True)
-        print(palette.cyan("● Listening — say a word..."), flush=True)
-        result = analyzer.listen(
-            seconds=args.seconds,
-            on_recording_complete=recording_complete,
+        prompt = (
+            "● Listening — say a phrase..."
+            if args.phrase
+            else "● Listening — say a word..."
         )
+        print(palette.cyan(prompt), flush=True)
+        if args.phrase:
+            phrase_result = analyzer.listen_for_phrase(
+                seconds=args.seconds,
+                beam_size=args.beam_size,
+                max_words=args.max_words,
+                on_recording_complete=recording_complete,
+            )
+            print()
+            print(render_phrase_result(phrase_result, settings, color=use_color))
+            return 0 if phrase_result.accepted else 2
+        else:
+            word_result = analyzer.listen(
+                seconds=args.seconds,
+                on_recording_complete=recording_complete,
+            )
+            print()
+            print(render_result(word_result, settings, color=use_color))
+            return 0 if word_result.match.accepted else 2
     except (SoundAnalyzerError, ValueError) as exc:
         error_palette = Palette(color_enabled(args.color, sys.stderr))
         print(error_palette.red(f"Error: {exc}"), file=sys.stderr)
         return 1
-
-    print()
-    print(render_result(result, settings, color=use_color))
-    return 0 if result.match.accepted else 2
 
 
 def _positive_float(value: str) -> float:
@@ -80,4 +112,11 @@ def _percentage(value: str) -> float:
     parsed = float(value)
     if not 0 <= parsed <= 1:
         raise argparse.ArgumentTypeError("must be between zero and one")
+    return parsed
+
+
+def _positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than zero")
     return parsed

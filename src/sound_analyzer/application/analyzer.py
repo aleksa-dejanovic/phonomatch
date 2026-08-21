@@ -9,7 +9,7 @@ from typing import Optional, Union
 
 from ..domain.config import DEFAULT_SETTINGS, DEFAULT_WORDS, MatchSettings
 from ..domain.matching import decide_match
-from ..domain.models import AnalysisResult
+from ..domain.models import AnalysisResult, PhraseAnalysisResult, WordAnalysisResult
 from ..infrastructure.audio import recorded_audio
 from ..infrastructure.phonetics import (
     phones_for_words,
@@ -21,6 +21,7 @@ from ..infrastructure.recognition import (
     DEFAULT_MODEL_REVISION,
     load_model,
     speech_to_ipa,
+    speech_to_phrase,
 )
 
 
@@ -64,6 +65,42 @@ class SoundAnalyzer:
             recognition_seconds=time.perf_counter() - started_at,
         )
 
+    def analyze_phrase_file(
+        self,
+        wav_path: Union[str, Path],
+        *,
+        beam_size: int = 64,
+        max_words: int = 12,
+    ) -> PhraseAnalysisResult:
+        """Decode and independently match vocabulary words in a WAV file."""
+        started_at = time.perf_counter()
+        transcription = speech_to_phrase(
+            wav_path,
+            self._words,
+            model_id=self._model_id,
+            model_revision=self._model_revision,
+            beam_size=beam_size,
+            max_words=max_words,
+        )
+        word_results = tuple(
+            WordAnalysisResult(
+                recognized_ipa=word.ipa,
+                match=self.match_ipa(word.ipa).match,
+                start_seconds=word.start_seconds,
+                end_seconds=word.end_seconds,
+            )
+            for word in transcription.words
+        )
+        return PhraseAnalysisResult(
+            words=word_results,
+            sequence_confidence=transcription.confidence,
+            sequence_accepted=(
+                transcription.confidence >= self._settings.min_confidence
+            ),
+            alternative_words=transcription.alternative,
+            recognition_seconds=time.perf_counter() - started_at,
+        )
+
     def load_model(self) -> None:
         """Load the speech model now so later recognition avoids startup delay."""
         load_model(self._model_id, self._model_revision)
@@ -91,6 +128,25 @@ class SoundAnalyzer:
             if on_recording_complete is not None:
                 on_recording_complete()
             return self.analyze_file(wav_path)
+
+    def listen_for_phrase(
+        self,
+        *,
+        seconds: float = 4.0,
+        beam_size: int = 64,
+        max_words: int = 12,
+        on_recording_complete: Optional[Callable[[], None]] = None,
+    ) -> PhraseAnalysisResult:
+        """Record and decode an arbitrary sequence of vocabulary words."""
+        self.load_model()
+        with recorded_audio(seconds) as wav_path:
+            if on_recording_complete is not None:
+                on_recording_complete()
+            return self.analyze_phrase_file(
+                wav_path,
+                beam_size=beam_size,
+                max_words=max_words,
+            )
 
 
 def listen_and_match(

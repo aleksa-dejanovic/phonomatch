@@ -1,8 +1,13 @@
 import unittest
 from dataclasses import replace
 
-from sound_analyzer import MatchSettings, SoundAnalyzer
-from sound_analyzer.interfaces.console import render_result
+from sound_analyzer import (
+    MatchSettings,
+    PhraseAnalysisResult,
+    SoundAnalyzer,
+    WordAnalysisResult,
+)
+from sound_analyzer.interfaces.console import render_phrase_result, render_result
 
 
 class PresentationTests(unittest.TestCase):
@@ -27,3 +32,18 @@ class PresentationTests(unittest.TestCase):
         result = replace(self.result, recognition_seconds=1.234)
         report = render_result(result, self.settings)
         self.assertIn("Time     1.23 s", report)
+
+    def test_phrase_report_contains_word_results_and_timestamps(self) -> None:
+        phrase = PhraseAnalysisResult(
+            words=(WordAnalysisResult("gɾun", self.result.match, 0.12, 0.74),),
+            sequence_confidence=0.92,
+            sequence_accepted=True,
+            alternative_words=("naku",),
+        )
+
+        report = render_phrase_result(phrase, self.settings)
+
+        self.assertIn("PHRASE ACCEPTED", report)
+        self.assertIn("Sequence confidence  92.0%", report)
+        self.assertIn("0.12–0.74s", report)
+        self.assertIn("Runner-up  naku", report)

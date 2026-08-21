@@ -39,6 +39,22 @@ def phones_for_words(words: Mapping[str, str]) -> tuple[str, ...]:
     return tuple(sorted(phones))
 
 
+def phone_sequences_for_words(words: Mapping[str, str]) -> dict[str, tuple[str, ...]]:
+    """Return each vocabulary pronunciation as a sequence of PanPhon segments."""
+    feature_table = _distance_calculator().fm
+    sequences = {
+        word: tuple(feature_table.ipa_segs(normalize_ipa(ipa)))
+        for word, ipa in words.items()
+    }
+    empty_words = [word for word, phones in sequences.items() if not phones]
+    if empty_words:
+        raise ValueError(
+            "vocabulary pronunciations contain no recognized IPA phones: "
+            + ", ".join(empty_words)
+        )
+    return sequences
+
+
 @lru_cache(maxsize=1)
 def _distance_calculator() -> Any:
     # PanPhon 0.21 imports pkg_resources, which emits a warning even though the
