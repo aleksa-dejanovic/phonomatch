@@ -16,7 +16,7 @@ classifiers = [
     "Topic :: Multimedia :: Sound/Audio :: Analysis",
 ]
 authors = [
-    { name = "Aleksa Dejanovic", email = "dejanovicaleksa234@gmail.com" }
+    { name = "Aleksa Dejanovic" }
 ]
 requires-python = ">=3.9"
 dependencies = [
