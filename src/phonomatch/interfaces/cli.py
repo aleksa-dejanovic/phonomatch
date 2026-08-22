@@ -11,12 +11,29 @@ from ..application.analyzer import PhonoMatch
 from ..domain.config import MatchSettings
 from ..exceptions import PhonoMatchError
 from .console import Palette, color_enabled, render_phrase_result, render_result
+from .server import serve
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="phonomatch",
         description="Match a spoken word using its IPA transcription.",
+    )
+    parser.add_argument(
+        "--server",
+        action="store_true",
+        help="run a local HTTP recognition service",
+    )
+    parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="server bind address (default: 127.0.0.1)",
+    )
+    parser.add_argument(
+        "--port",
+        type=_port,
+        default=8765,
+        help="server port (default: 8765)",
     )
     parser.add_argument(
         "--phrase",
@@ -71,6 +88,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(palette.cyan("◌ Loading speech model..."), flush=True)
         analyzer.load_model()
         print(palette.green("● Model ready"), flush=True)
+        if args.server:
+            print(
+                palette.cyan(
+                    f"● Serving recognition at http://{args.host}:{args.port}"
+                ),
+                flush=True,
+            )
+            serve(args.host, args.port, analyzer)
+            return 0
         prompt = (
             "● Listening — say a phrase..."
             if args.phrase
@@ -119,4 +145,11 @@ def _positive_int(value: str) -> int:
     parsed = int(value)
     if parsed <= 0:
         raise argparse.ArgumentTypeError("must be greater than zero")
+    return parsed
+
+
+def _port(value: str) -> int:
+    parsed = int(value)
+    if not 1 <= parsed <= 65535:
+        raise argparse.ArgumentTypeError("must be between 1 and 65535")
     return parsed
