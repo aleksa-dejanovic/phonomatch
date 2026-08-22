@@ -1,5 +1,5 @@
 [project]
-name = "phonematch"
+name = "phonomatch"
 version = "0.1.0"
 description = "Record speech, transcribe it to IPA, and match it against a word list"
 readme = "README.md"
@@ -29,9 +29,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/aleksa-dejanovic/phonematch"
-Repository = "https://github.com/aleksa-dejanovic/phonematch"
-Issues = "https://github.com/aleksa-dejanovic/phonematch/issues"
+Homepage = "https://github.com/aleksa-dejanovic/phonomatch"
+Repository = "https://github.com/aleksa-dejanovic/phonomatch"
+Issues = "https://github.com/aleksa-dejanovic/phonomatch/issues"
 
 [dependency-groups]
 dev = [
@@ -40,7 +40,7 @@ dev = [
 ]
 
 [project.scripts]
-phonematch = "phonematch.interfaces.cli:main"
+phonomatch = "phonomatch.interfaces.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.12.2,<0.13.0"]

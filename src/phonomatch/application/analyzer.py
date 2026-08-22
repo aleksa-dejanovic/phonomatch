@@ -25,7 +25,7 @@ from ..infrastructure.recognition import (
 )
 
 
-class PhoneMatch:
+class PhonoMatch:
     """Transcribe recordings and match them against an IPA vocabulary."""
 
     def __init__(
@@ -155,5 +155,5 @@ def listen_and_match(
     seconds: float = 2.0,
     settings: MatchSettings = DEFAULT_SETTINGS,
 ) -> AnalysisResult:
-    """Convenience wrapper around :class:`PhoneMatch`."""
-    return PhoneMatch(words, settings).listen(seconds=seconds)
+    """Convenience wrapper around :class:`PhonoMatch`."""
+    return PhonoMatch(words, settings).listen(seconds=seconds)

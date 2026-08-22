@@ -62,7 +62,7 @@ def render_result(
     )
 
     lines = [
-        palette.cyan(palette.bold("PHONEMATCH")),
+        palette.cyan(palette.bold("PHONOMATCH")),
         palette.dim("=" * 48),
         f"Heard    /{result.recognized_ipa}/",
         f"Result   {decision}",
@@ -139,7 +139,7 @@ def render_phrase_result(
         else palette.red("✗ PHRASE REJECTED")
     )
     lines = [
-        palette.cyan(palette.bold("PHONEMATCH")),
+        palette.cyan(palette.bold("PHONOMATCH")),
         palette.dim("=" * 72),
         f"Heard    /{result.recognized_ipa}/",
         f"Result   {decision}",

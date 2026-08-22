@@ -1,7 +1,7 @@
 import unittest
 
-from phonematch import DEFAULT_WORDS, phones_for_words
-from phonematch.infrastructure.phonetics import (
+from phonomatch import DEFAULT_WORDS, phones_for_words
+from phonomatch.infrastructure.phonetics import (
     phonetic_distance,
     phonetic_maximum_distance,
 )

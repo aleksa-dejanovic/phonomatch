@@ -6,8 +6,8 @@ from typing import ClassVar
 
 import numpy as np
 
-from phonematch import RecognitionError, UnsupportedPhoneError
-from phonematch.infrastructure.recognition import (
+from phonomatch import RecognitionError, UnsupportedPhoneError
+from phonomatch.infrastructure.recognition import (
     TARGET_SAMPLE_RATE,
     _mask_logits,
     _read_audio,

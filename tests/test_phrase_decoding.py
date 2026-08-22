@@ -4,7 +4,7 @@ from typing import Any
 
 import numpy as np
 
-from phonematch.infrastructure.phrase_decoding import align_tokens, decode_phrases
+from phonomatch.infrastructure.phrase_decoding import align_tokens, decode_phrases
 
 
 def _emissions(

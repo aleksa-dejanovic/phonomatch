@@ -1,6 +1,6 @@
 import unittest
 
-from phonematch import normalize_ipa
+from phonomatch import normalize_ipa
 
 
 class IpaTests(unittest.TestCase):

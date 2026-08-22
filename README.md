@@ -1,6 +1,6 @@
-# PhoneMatch
+# PhonoMatch
 
-PhoneMatch records a short utterance, recognizes its phones with Meta's
+PhonoMatch records a short utterance, recognizes its phones with Meta's
 Wav2Vec2Phoneme model, and compares the resulting IPA transcription with a
 configurable vocabulary using PanPhon's weighted feature edit distance.
 
@@ -21,11 +21,11 @@ separated from the runner-up, or not confident enough.
 
 ## Platform support
 
-PhoneMatch supports Linux, macOS, and Windows. Microphone access must be
+PhonoMatch supports Linux, macOS, and Windows. Microphone access must be
 permitted for the terminal or Python environment that runs the command.
 
 On Linux, install PortAudio with your system package manager before installing
-PhoneMatch. For Debian or Ubuntu:
+PhonoMatch. For Debian or Ubuntu:
 
 ```console
 sudo apt install libportaudio2
@@ -49,24 +49,24 @@ Install from PyPI:
 ```console
 # Linux and Windows: prefer PyTorch's CPU-only wheels. This avoids installing
 # the NVIDIA CUDA runtime packages pulled in by the default PyPI Linux wheels.
-python -m pip install --extra-index-url https://download.pytorch.org/whl/cpu phonematch
+python -m pip install --extra-index-url https://download.pytorch.org/whl/cpu phonomatch
 ```
 
-On macOS, `python -m pip install phonematch` installs the platform-native
+On macOS, `python -m pip install phonomatch` installs the platform-native
 PyTorch wheel; it does not include NVIDIA CUDA libraries. The application uses
 CPU inference, so a GPU build is not needed on any platform.
 
 Then confirm the command is available:
 
 ```console
-phonematch --help
+phonomatch --help
 ```
 
 For a development checkout, use [`uv`](https://docs.astral.sh/uv/):
 
 ```console
 uv sync
-uv run phonematch
+uv run phonomatch
 ```
 
 Use `uv sync --locked` in production and CI so dependency resolution cannot
@@ -87,8 +87,8 @@ subsequent requests.
 
 ## Privacy and network access
 
-PhoneMatch records audio from the selected microphone and processes it locally.
-It does not upload recorded audio to a PhoneMatch service or any other remote
+PhonoMatch records audio from the selected microphone and processes it locally.
+It does not upload recorded audio to a PhonoMatch service or any other remote
 service. The first use of the default model requires network access to download
 the pinned model files from Hugging Face; later uses read them from the local
 cache. You can instead configure a compatible local model path to avoid that
@@ -97,12 +97,12 @@ download.
 Useful CLI options:
 
 ```console
-phonematch --seconds 3
-phonematch --phrase --seconds 5
-phonematch --phrase --beam-size 96 --max-words 8
-phonematch --max-distance 0.08
-phonematch --color never
-phonematch --help
+phonomatch --seconds 3
+phonomatch --phrase --seconds 5
+phonomatch --phrase --beam-size 96 --max-words 8
+phonomatch --max-distance 0.08
+phonomatch --color never
+phonomatch --help
 ```
 
 Exit codes are `0` for an accepted match, `2` for an ambiguous or unknown
@@ -111,14 +111,14 @@ utterance, and `1` for an operational error.
 ## Python API
 
 ```python
-from phonematch import MatchSettings, PhoneMatch
+from phonomatch import MatchSettings, PhonoMatch
 
 words = {
     "grun": "ɡrun",
     "shaki": "ʃaki",
 }
 
-analyzer = PhoneMatch(
+analyzer = PhonoMatch(
     words,
     MatchSettings(max_distance_ratio=0.10),
 )
@@ -180,7 +180,7 @@ These options only affect phrase mode.
 You can use a compatible local or Hugging Face model identifier:
 
 ```python
-analyzer = PhoneMatch(
+analyzer = PhonoMatch(
     words,
     model_id="/path/to/local/model",
     model_revision=None,
@@ -190,7 +190,7 @@ analyzer = PhoneMatch(
 The model must be compatible with `AutoModelForCTC` and its tokenizer must use
 phone tokens matching the vocabulary's normalized IPA phones.
 
-Expected operational exceptions inherit from `PhoneMatchError`:
+Expected operational exceptions inherit from `PhonoMatchError`:
 
 - `AudioRecordingError`
 - `RecognitionError`
@@ -209,7 +209,7 @@ The default acceptance rules are:
 All checks must pass. Confidence is relative to the configured vocabulary; it
 does not replace the absolute distance check.
 
-The vocabulary is `DEFAULT_WORDS` in `src/phonematch/domain/config.py`.
+The vocabulary is `DEFAULT_WORDS` in `src/phonomatch/domain/config.py`.
 The decoder inventory is derived automatically from it. Unsupported model
 phones produce a clear error instead of silently degrading recognition.
 

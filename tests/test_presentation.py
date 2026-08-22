@@ -1,19 +1,19 @@
 import unittest
 from dataclasses import replace
 
-from phonematch import (
+from phonomatch import (
     MatchSettings,
-    PhoneMatch,
+    PhonoMatch,
     PhraseAnalysisResult,
     WordAnalysisResult,
 )
-from phonematch.interfaces.console import render_phrase_result, render_result
+from phonomatch.interfaces.console import render_phrase_result, render_result
 
 
 class PresentationTests(unittest.TestCase):
     def setUp(self) -> None:
         self.settings = MatchSettings()
-        self.result = PhoneMatch(
+        self.result = PhonoMatch(
             {"grun": "ɡrun", "naku": "naku"}, self.settings
         ).match_ipa("gɾun")
 

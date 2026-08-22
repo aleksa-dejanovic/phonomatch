@@ -1,15 +1,15 @@
-"""Exceptions raised by phonematch integrations."""
+"""Exceptions raised by phonomatch integrations."""
 
 
-class PhoneMatchError(Exception):
-    """Base class for expected phonematch failures."""
+class PhonoMatchError(Exception):
+    """Base class for expected phonomatch failures."""
 
 
-class AudioRecordingError(PhoneMatchError):
+class AudioRecordingError(PhonoMatchError):
     """Raised when microphone capture fails."""
 
 
-class RecognitionError(PhoneMatchError):
+class RecognitionError(PhonoMatchError):
     """Raised when Wav2Vec2Phoneme cannot transcribe a recording."""
 
 
