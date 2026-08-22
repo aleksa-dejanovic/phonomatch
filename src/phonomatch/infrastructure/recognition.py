@@ -315,7 +315,7 @@ def _mask_token_ids(logits: Any, allowed_ids: set[int]) -> Any:
 
 def _model_logits(
     audio: np.ndarray[Any, np.dtype[np.float32]], bundle: _ModelBundle
-) -> Any:
+) -> np.ndarray[Any, np.dtype[np.float32]]:
     normalized = _normalize_audio(audio)[np.newaxis, :]
     model_input = bundle.session.get_inputs()[0].name
     return cast(
