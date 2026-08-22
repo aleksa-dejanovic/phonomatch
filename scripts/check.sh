@@ -32,8 +32,11 @@ run_check "Checking formatting" uv run ruff format --check .
 run_check "Running lint" uv run ruff check .
 run_check "Running strict type checks" uv run --group dev python -m mypy
 run_check \
-    "Running unit tests" \
-    uv run python -m unittest discover -s tests -v
+    "Running unit tests with coverage" \
+    uv run --group dev coverage run -m unittest discover -s tests -v
+run_check "Reporting coverage" uv run --group dev coverage report
+run_check "Generating HTML coverage report" uv run --group dev coverage html
+printf '\nHTML coverage report: %s\n' "$repository_root/htmlcov/index.html"
 run_check \
     "Building source and wheel distributions" \
     uv build --out-dir "$temporary_directory/dist"

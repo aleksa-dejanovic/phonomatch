@@ -2,6 +2,7 @@ import unittest
 
 from phonomatch import DEFAULT_WORDS, phones_for_words
 from phonomatch.infrastructure.phonetics import (
+    phone_sequences_for_words,
     phonetic_distance,
     phonetic_maximum_distance,
 )
@@ -20,3 +21,12 @@ class PhoneticsTests(unittest.TestCase):
         maximum = phonetic_maximum_distance("tova", "naku")
         self.assertGreaterEqual(distance, 0)
         self.assertLessEqual(distance, maximum)
+
+    def test_phone_sequences_are_derived_for_each_vocabulary_word(self) -> None:
+        sequences = phone_sequences_for_words({"grun": "ɡrun", "shaki": "ʃaki"})
+        self.assertEqual(sequences["grun"], ("ɡ", "r", "u", "n"))
+        self.assertEqual(sequences["shaki"], ("ʃ", "a", "k", "i"))
+
+    def test_phone_sequences_reject_unrecognized_pronunciations(self) -> None:
+        with self.assertRaisesRegex(ValueError, "no recognized IPA phones"):
+            phone_sequences_for_words({"invalid": "   "})

@@ -35,6 +35,7 @@ Issues = "https://github.com/aleksa-dejanovic/phonomatch/issues"
 
 [dependency-groups]
 dev = [
+    "coverage[toml]>=7.6,<8",
     "mypy>=1.14,<2",
     "ruff>=0.12,<1",
 ]
@@ -65,6 +66,18 @@ python_version = "3.10"
 strict = true
 files = ["src", "tests"]
 warn_unreachable = true
+
+[tool.coverage.run]
+branch = true
+source = ["src/phonomatch"]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+skip_covered = true
+
+[tool.coverage.html]
+directory = "htmlcov"
 
 [[tool.mypy.overrides]]
 module = ["panphon.*", "scipy.*", "sounddevice.*", "onnxruntime", "onnxruntime.*"]

@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
-from phonomatch import PhonoMatch
+from phonomatch import MatchSettings, PhonoMatch, listen_and_match
 from phonomatch.infrastructure.recognition import (
     PhraseTranscription,
     RecognizedWord,
@@ -117,3 +117,38 @@ class AnalyzerTests(unittest.TestCase):
             result = analyzer.analyze_phrase_file("recording.wav")
 
         self.assertFalse(result.accepted)
+
+    def test_words_returns_a_defensive_copy(self) -> None:
+        analyzer = PhonoMatch({"grun": "ɡrun"})
+        words = dict(analyzer.words)
+        words["extra"] = "extra"
+        self.assertEqual(analyzer.words, {"grun": "ɡrun"})
+
+    def test_listen_for_phrase_forwards_decoder_options(self) -> None:
+        analyzer = PhonoMatch({"grun": "ɡrun"})
+        expected = object()
+
+        @contextmanager
+        def fake_recording(_seconds: float) -> Iterator[Path]:
+            yield Path("recording.wav")
+
+        with (
+            patch("phonomatch.application.analyzer.recorded_audio", fake_recording),
+            patch.object(analyzer, "load_model"),
+            patch.object(
+                analyzer, "analyze_phrase_file", return_value=expected
+            ) as analyze,
+        ):
+            result = analyzer.listen_for_phrase(seconds=3, beam_size=7, max_words=5)
+
+        self.assertIs(result, expected)
+        analyze.assert_called_once_with(Path("recording.wav"), beam_size=7, max_words=5)
+
+    def test_convenience_wrapper_constructs_and_listens(self) -> None:
+        expected = object()
+        with patch.object(PhonoMatch, "listen", return_value=expected) as listen:
+            result = listen_and_match(
+                {"grun": "ɡrun"}, seconds=3, settings=MatchSettings()
+            )
+        self.assertIs(result, expected)
+        listen.assert_called_once_with(seconds=3)
