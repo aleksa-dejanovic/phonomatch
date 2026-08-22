@@ -1,15 +1,15 @@
-"""Wav2Vec2Phoneme integration with vocabulary-constrained CTC decoding."""
+"""ONNX Wav2Vec2Phoneme integration with vocabulary-constrained CTC decoding."""
 
 from __future__ import annotations
 
+import json
 import math
-import os
 import wave
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import numpy as np
 from scipy.signal import resample_poly
@@ -19,16 +19,67 @@ from ..exceptions import RecognitionError, UnsupportedPhoneError
 from .phonetics import phone_sequences_for_words
 from .phrase_decoding import align_tokens, decode_phrases
 
-DEFAULT_MODEL_ID = "facebook/wav2vec2-lv-60-espeak-cv-ft"
-DEFAULT_MODEL_REVISION = "ae45363bf3413b374fecd9dc8bc1df0e24c3b7f4"
+DEFAULT_MODEL_ID = "onnx-community/wav2vec2-lv-60-espeak-cv-ft-ONNX"
+DEFAULT_MODEL_REVISION = "c69750f5043e5e1f8a71ab95dd3b98338c280c92"
+DEFAULT_MODEL_FILE = "onnx/model_q4f16.onnx"
 TARGET_SAMPLE_RATE = 16_000
 
 
 @dataclass(frozen=True)
 class _ModelBundle:
-    tokenizer: Any
-    feature_extractor: Any
-    model: Any
+    tokenizer: _CTCTokenizer
+    session: Any
+
+
+@dataclass(frozen=True)
+class _CTCTokenizer:
+    """Minimal CTC decoder for the model's JSON vocabulary.
+
+    Keeping this adapter local avoids importing Transformers (and therefore a
+    framework backend) merely to turn predicted token IDs into IPA text.
+    """
+
+    vocabulary: Mapping[str, int]
+    pad_token_id: int
+    all_special_ids: tuple[int, ...]
+
+    @classmethod
+    def from_file(cls, path: str | Path) -> _CTCTokenizer:
+        vocabulary = json.loads(Path(path).read_text(encoding="utf-8"))
+        if not isinstance(vocabulary, dict) or "<pad>" not in vocabulary:
+            raise ValueError("model vocabulary is missing its <pad> token")
+        if not all(
+            isinstance(token, str) and isinstance(index, int)
+            for token, index in vocabulary.items()
+        ):
+            raise ValueError("model vocabulary must map token strings to IDs")
+        special_ids = tuple(
+            index
+            for token, index in vocabulary.items()
+            if token.startswith("<") and token.endswith(">")
+        )
+        return cls(vocabulary, vocabulary["<pad>"], special_ids)
+
+    def get_vocab(self) -> Mapping[str, int]:
+        return self.vocabulary
+
+    def batch_decode(self, token_batches: np.ndarray[Any, Any]) -> list[str]:
+        token_by_id = {index: token for token, index in self.vocabulary.items()}
+        decoded: list[str] = []
+        for token_ids in token_batches:
+            previous_id: Optional[int] = None
+            tokens: list[str] = []
+            for token_id in token_ids:
+                index = int(token_id)
+                if index != previous_id and index != self.pad_token_id:
+                    token = token_by_id.get(index)
+                    if token is None:
+                        raise ValueError(f"model produced unknown token ID: {index}")
+                    if index not in self.all_special_ids:
+                        tokens.append(token)
+                previous_id = index
+            decoded.append("".join(tokens))
+        return decoded
 
 
 @dataclass(frozen=True)
@@ -85,20 +136,11 @@ def speech_to_ipa(
     try:
         audio = _read_audio(path)
         bundle = _model_bundle(model_id, model_revision)
-        inputs = bundle.feature_extractor(
-            audio,
-            sampling_rate=TARGET_SAMPLE_RATE,
-            return_tensors="pt",
-        )
-
-        import torch
-
-        with torch.inference_mode():
-            logits = bundle.model(**inputs).logits
+        logits = _model_logits(audio, bundle)
         if allowed_phones is not None:
             logits = _mask_logits(logits, bundle.tokenizer, allowed_phones)
 
-        predicted_ids = torch.argmax(logits, dim=-1)
+        predicted_ids = np.argmax(logits, axis=-1)
         transcription = bundle.tokenizer.batch_decode(predicted_ids)[0]
     except (RecognitionError, UnsupportedPhoneError, ValueError):
         raise
@@ -158,9 +200,7 @@ def speech_to_phrase(
         allowed_ids.add(blank_id)
         logits = _mask_token_ids(logits, allowed_ids)
 
-        import torch
-
-        log_probabilities = torch.log_softmax(logits[0], dim=-1).detach().cpu().numpy()
+        log_probabilities = _log_softmax(logits[0])
         hypotheses = decode_phrases(
             log_probabilities,
             pronunciations,
@@ -183,9 +223,9 @@ def speech_to_phrase(
             word_spans = spans[token_offset : token_offset + token_length]
             start_frame = word_spans[0].start
             end_frame = word_spans[-1].end
-            predicted_ids = torch.argmax(
-                logits[0, start_frame:end_frame], dim=-1
-            ).unsqueeze(0)
+            predicted_ids = np.argmax(logits[0, start_frame:end_frame], axis=-1)[
+                np.newaxis, :
+            ]
             recognized_ipa = normalize_ipa(
                 str(bundle.tokenizer.batch_decode(predicted_ids)[0])
             )
@@ -266,7 +306,7 @@ def _mask_token_ids(logits: Any, allowed_ids: set[int]) -> Any:
     disallowed_ids = sorted(set(range(logits.shape[-1])) - allowed_ids)
     if not disallowed_ids:
         return logits
-    masked = logits.clone() if hasattr(logits, "clone") else logits.copy()
+    masked = logits.copy()
     masked[..., disallowed_ids] = float("-inf")
     return masked
 
@@ -274,15 +314,35 @@ def _mask_token_ids(logits: Any, allowed_ids: set[int]) -> Any:
 def _model_logits(
     audio: np.ndarray[Any, np.dtype[np.float32]], bundle: _ModelBundle
 ) -> Any:
-    inputs = bundle.feature_extractor(
-        audio,
-        sampling_rate=TARGET_SAMPLE_RATE,
-        return_tensors="pt",
+    normalized = _normalize_audio(audio)[np.newaxis, :]
+    model_input = bundle.session.get_inputs()[0].name
+    return cast(
+        np.ndarray[Any, np.dtype[np.float32]],
+        np.asarray(
+            bundle.session.run(None, {model_input: normalized})[0], dtype=np.float32
+        ),
     )
-    import torch
 
-    with torch.inference_mode():
-        return bundle.model(**inputs).logits
+
+def _normalize_audio(
+    audio: np.ndarray[Any, np.dtype[np.float32]],
+) -> np.ndarray[Any, np.dtype[np.float32]]:
+    """Match Wav2Vec2FeatureExtractor's unpadded zero-mean normalization."""
+    mean = float(np.mean(audio))
+    variance = float(np.var(audio))
+    return ((audio - mean) / math.sqrt(variance + 1e-7)).astype(np.float32)
+
+
+def _log_softmax(logits: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.float64]]:
+    maximum = np.max(logits, axis=-1, keepdims=True)
+    return cast(
+        np.ndarray[Any, np.dtype[np.float64]],
+        (
+            logits
+            - maximum
+            - np.log(np.sum(np.exp(logits - maximum), axis=-1, keepdims=True))
+        ).astype(np.float64),
+    )
 
 
 def _hypothesis_confidence(hypotheses: tuple[Any, ...]) -> float:
@@ -295,17 +355,8 @@ def _hypothesis_confidence(hypotheses: tuple[Any, ...]) -> float:
 
 @lru_cache(maxsize=2)
 def _model_bundle(model_id: str, revision: Optional[str]) -> _ModelBundle:
-    # This checkpoint publishes PyTorch weights on its main revision. Without
-    # this flag, Transformers also downloads an unmerged SafeTensors conversion
-    # PR in the background, nearly doubling the Hugging Face cache footprint.
-    os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "true")
-
+    import onnxruntime
     from huggingface_hub import hf_hub_download
-    from transformers import (
-        AutoModelForCTC,
-        Wav2Vec2CTCTokenizer,
-        Wav2Vec2FeatureExtractor,
-    )
 
     model_path = Path(model_id)
     is_local = model_path.is_dir()
@@ -314,27 +365,19 @@ def _model_bundle(model_id: str, revision: Optional[str]) -> _ModelBundle:
         if is_local
         else hf_hub_download(model_id, filename="vocab.json", revision=revision)
     )
-    tokenizer = Wav2Vec2CTCTokenizer(  # type: ignore[no-untyped-call]
-        vocab_file,
-        unk_token="<unk>",
-        pad_token="<pad>",
-        word_delimiter_token=None,
+    onnx_file = (
+        str(model_path / DEFAULT_MODEL_FILE)
+        if is_local
+        else hf_hub_download(model_id, filename=DEFAULT_MODEL_FILE, revision=revision)
     )
-    if is_local or revision is None:
-        feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(model_id)
-        model = AutoModelForCTC.from_pretrained(model_id, use_safetensors=False)
-    else:
-        feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(
-            model_id, revision=revision
-        )
-        model = AutoModelForCTC.from_pretrained(
-            model_id,
-            revision=revision,
-            use_safetensors=False,
-        )
-    model.eval()
-    return _ModelBundle(
-        tokenizer=tokenizer,
-        feature_extractor=feature_extractor,
-        model=model,
+    session_options = onnxruntime.SessionOptions()
+    # The published q4f16 graph is valid, but ORT's SimplifiedLayerNorm fusion
+    # fails to initialize it on the last release supporting Python 3.10.
+    # Disabling graph fusions keeps the model portable across every supported
+    # Python version; the quantized graph remains substantially smaller than
+    # the former PyTorch checkpoint.
+    session_options.graph_optimization_level = (
+        onnxruntime.GraphOptimizationLevel.ORT_DISABLE_ALL
     )
+    session = onnxruntime.InferenceSession(onnx_file, sess_options=session_options)
+    return _ModelBundle(_CTCTokenizer.from_file(vocab_file), session)

@@ -47,14 +47,11 @@ application.
 Install from PyPI:
 
 ```console
-# Linux and Windows: prefer PyTorch's CPU-only wheels. This avoids installing
-# the NVIDIA CUDA runtime packages pulled in by the default PyPI Linux wheels.
-python -m pip install --extra-index-url https://download.pytorch.org/whl/cpu phonomatch
+python -m pip install phonomatch
 ```
 
-On macOS, `python -m pip install phonomatch` installs the platform-native
-PyTorch wheel; it does not include NVIDIA CUDA libraries. The application uses
-CPU inference, so a GPU build is not needed on any platform.
+PhonoMatch uses ONNX Runtime for CPU speech inference. It has no PyTorch,
+CUDA, or Transformers runtime dependency.
 
 Then confirm the command is available:
 
@@ -72,13 +69,26 @@ uv run phonomatch
 Use `uv sync --locked` in production and CI so dependency resolution cannot
 change after review.
 
-The first run downloads `facebook/wav2vec2-lv-60-espeak-cv-ft` at the pinned
-revision `ae45363bf3413b374fecd9dc8bc1df0e24c3b7f4`. Later runs reuse the local
-Hugging Face cache, so model contents and licensing cannot drift silently.
+The first run downloads the quantized ONNX conversion of
+`facebook/wav2vec2-lv-60-espeak-cv-ft`, pinned at revision
+`c69750f5043e5e1f8a71ab95dd3b98338c280c92`. Later runs reuse the local Hugging
+Face cache, so model contents and licensing cannot drift silently. The ONNX
+model (`model_q4f16.onnx`) is approximately 197 MB, compared with the former
+1.2 GiB PyTorch checkpoint.
 
-The loader explicitly uses the model's official PyTorch weights and disables
-Transformers' automatic download of an unmerged SafeTensors conversion. A clean
-model cache therefore occupies approximately 1.2 GiB instead of 2.4 GiB.
+## ONNX Runtime migration
+
+Speech recognition now runs the model directly with ONNX Runtime. Audio is
+resampled and normalized exactly as Wav2Vec2 expects, ONNX Runtime produces CTC
+logits as NumPy arrays, and PhonoMatch's existing vocabulary-constrained
+decoder consumes those arrays. The project intentionally uses a small local CTC
+vocabulary decoder instead of importing Transformers just for token decoding.
+
+The default model ID points to the ONNX conversion. To use a local model
+directory, pass a directory containing `vocab.json` and
+`onnx/model_q4f16.onnx` as the model ID. The conversion is pinned to a commit;
+updating it should include regression testing of both single-word and phrase
+recognition against representative audio.
 
 The console loads the model before recording begins, announces when recording
 ends and recognition starts, and reports the recognition and matching time.

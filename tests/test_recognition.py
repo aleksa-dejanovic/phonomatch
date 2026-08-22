@@ -2,14 +2,18 @@ import tempfile
 import unittest
 import wave
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import numpy as np
 
 from phonomatch import RecognitionError, UnsupportedPhoneError
 from phonomatch.infrastructure.recognition import (
     TARGET_SAMPLE_RATE,
+    _CTCTokenizer,
+    _log_softmax,
     _mask_logits,
+    _model_logits,
+    _ModelBundle,
     _read_audio,
 )
 
@@ -20,6 +24,21 @@ class _Tokenizer:
     @staticmethod
     def get_vocab() -> dict[str, int]:
         return {"<pad>": 0, "a": 1, "ɡ": 2, "ʃ": 3}
+
+
+class _Session:
+    class _Input:
+        name = "input_values"
+
+    def get_inputs(self) -> list["_Session._Input"]:
+        return [self._Input()]
+
+    @staticmethod
+    def run(
+        _outputs: object, inputs: dict[str, np.ndarray[Any, Any]]
+    ) -> list[np.ndarray[Any, Any]]:
+        input_values = inputs["input_values"]
+        return [np.zeros((1, input_values.shape[1], 4), dtype=np.float32)]
 
 
 class RecognitionTests(unittest.TestCase):
@@ -59,3 +78,18 @@ class RecognitionTests(unittest.TestCase):
         logits = np.zeros((1, 2, 4), dtype=np.float32)
         with self.assertRaisesRegex(UnsupportedPhoneError, "unsupported"):
             _mask_logits(logits, _Tokenizer(), ("x",))
+
+    def test_ctc_decoder_collapses_repeated_tokens_and_blanks(self) -> None:
+        tokenizer = _CTCTokenizer({"<pad>": 0, "a": 1, "ɡ": 2, "<unk>": 3}, 0, (0, 3))
+        decoded = tokenizer.batch_decode(np.array([[1, 1, 0, 1, 2, 2, 3]]))
+        self.assertEqual(decoded, ["aaɡ"])
+
+    def test_model_session_receives_normalized_batched_audio(self) -> None:
+        tokenizer = _CTCTokenizer({"<pad>": 0}, 0, (0,))
+        bundle = _ModelBundle(tokenizer, _Session())
+        logits = _model_logits(np.array([1.0, 3.0], dtype=np.float32), bundle)
+        self.assertEqual(logits.shape, (1, 2, 4))
+
+    def test_log_softmax_normalizes_each_frame(self) -> None:
+        result = _log_softmax(np.array([[1.0, 2.0]], dtype=np.float32))
+        self.assertAlmostEqual(float(np.exp(result).sum()), 1.0)

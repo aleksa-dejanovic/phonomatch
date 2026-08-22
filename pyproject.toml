@@ -21,11 +21,11 @@ authors = [
 requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.26,<3",
+    "huggingface-hub>=0.30,<1",
+    "onnxruntime>=1.20,<1.24",
     "panphon==0.22.2",
     "scipy>=1.10,<2",
     "sounddevice>=0.5.5",
-    "torch>=2.0,<3",
-    "transformers>=5.5,<6",
 ]
 
 [project.urls]
@@ -49,16 +49,6 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 source-exclude = ["pyproject.toml.orig"]
 
-[[tool.uv.index]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
-explicit = true
-
-[tool.uv.sources]
-torch = [
-    { index = "pytorch-cpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
-]
-
 [tool.ruff]
 target-version = "py310"
 line-length = 88
@@ -77,5 +67,5 @@ files = ["src", "tests"]
 warn_unreachable = true
 
 [[tool.mypy.overrides]]
-module = ["panphon.*", "scipy.*", "sounddevice.*", "transformers", "transformers.*"]
+module = ["panphon.*", "scipy.*", "sounddevice.*", "onnxruntime", "onnxruntime.*"]
 ignore_missing_imports = true
