@@ -13,6 +13,8 @@ class CliTests(unittest.TestCase):
     def test_numeric_validators_reject_out_of_range_values(self) -> None:
         for validator, value in (
             (_positive_float, "0"),
+            (_positive_float, "nan"),
+            (_positive_float, "inf"),
             (_positive_int, "-1"),
             (_percentage, "2"),
         ):

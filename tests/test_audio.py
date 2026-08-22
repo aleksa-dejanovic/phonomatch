@@ -16,6 +16,14 @@ class AudioTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "greater than zero"), recorded_audio(0):
             pass
 
+    def test_rejects_non_finite_recording_duration(self) -> None:
+        for seconds in (float("nan"), float("inf")):
+            with (
+                self.assertRaisesRegex(ValueError, "finite value"),
+                recorded_audio(seconds),
+            ):
+                pass
+
     def test_removes_recording_after_context_exits(self) -> None:
         path = Path("/tmp/phonomatch-test-recording.wav")
         path.write_bytes(b"audio")

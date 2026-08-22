@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 import sys
 from collections.abc import Sequence
 from typing import Optional
@@ -103,8 +104,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
 def _positive_float(value: str) -> float:
     parsed = float(value)
-    if parsed <= 0:
-        raise argparse.ArgumentTypeError("must be greater than zero")
+    if not math.isfinite(parsed) or parsed <= 0:
+        raise argparse.ArgumentTypeError("must be a finite value greater than zero")
     return parsed
 
 

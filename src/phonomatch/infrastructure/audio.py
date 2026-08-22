@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import tempfile
 import wave
 from collections.abc import Iterator
@@ -15,8 +16,8 @@ from ..exceptions import AudioRecordingError
 @contextmanager
 def recorded_audio(seconds: float = 2.0) -> Iterator[Path]:
     """Record mono 16-bit audio and remove the temporary WAV on exit."""
-    if seconds <= 0:
-        raise ValueError("recording duration must be greater than zero")
+    if not math.isfinite(seconds) or seconds <= 0:
+        raise ValueError("recording duration must be a finite value greater than zero")
 
     path: Path | None = None
     try:
