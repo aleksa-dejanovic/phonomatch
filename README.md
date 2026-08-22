@@ -90,6 +90,14 @@ directory, pass a directory containing `vocab.json` and
 updating it should include regression testing of both single-word and phrase
 recognition against representative audio.
 
+ONNX Runtime uses up to eight CPU threads per recognition session by default.
+Override this for a dedicated low-latency machine or a shared server with
+`PHONOMATCH_ONNX_THREADS`, for example:
+
+```console
+PHONOMATCH_ONNX_THREADS=4 phonomatch
+```
+
 The console loads the model before recording begins, announces when recording
 ends and recognition starts, and reports the recognition and matching time.
 Keeping the loaded analyzer instance alive also keeps the model resident for

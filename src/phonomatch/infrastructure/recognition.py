@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import wave
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
@@ -22,6 +23,7 @@ from .phrase_decoding import align_tokens, decode_phrases
 DEFAULT_MODEL_ID = "onnx-community/wav2vec2-lv-60-espeak-cv-ft-ONNX"
 DEFAULT_MODEL_REVISION = "c69750f5043e5e1f8a71ab95dd3b98338c280c92"
 DEFAULT_MODEL_FILE = "onnx/model_q4f16.onnx"
+DEFAULT_ONNX_THREADS = 8
 TARGET_SAMPLE_RATE = 16_000
 
 
@@ -345,6 +347,20 @@ def _log_softmax(logits: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.fl
     )
 
 
+def _onnx_thread_count() -> int:
+    """Return the configured inference-thread limit for one recognition session."""
+    configured = os.environ.get("PHONOMATCH_ONNX_THREADS")
+    if configured is None:
+        return min(DEFAULT_ONNX_THREADS, os.cpu_count() or 1)
+    try:
+        thread_count = int(configured)
+    except ValueError as exc:
+        raise ValueError("PHONOMATCH_ONNX_THREADS must be a positive integer") from exc
+    if thread_count < 1:
+        raise ValueError("PHONOMATCH_ONNX_THREADS must be a positive integer")
+    return thread_count
+
+
 def _hypothesis_confidence(hypotheses: tuple[Any, ...]) -> float:
     if len(hypotheses) == 1:
         return 1.0
@@ -379,5 +395,7 @@ def _model_bundle(model_id: str, revision: Optional[str]) -> _ModelBundle:
     session_options.graph_optimization_level = (
         onnxruntime.GraphOptimizationLevel.ORT_DISABLE_ALL
     )
+    session_options.intra_op_num_threads = _onnx_thread_count()
+    session_options.inter_op_num_threads = 1
     session = onnxruntime.InferenceSession(onnx_file, sess_options=session_options)
     return _ModelBundle(_CTCTokenizer.from_file(vocab_file), session)

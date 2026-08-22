@@ -3,6 +3,7 @@ import unittest
 import wave
 from pathlib import Path
 from typing import Any, ClassVar
+from unittest.mock import patch
 
 import numpy as np
 
@@ -14,6 +15,7 @@ from phonomatch.infrastructure.recognition import (
     _mask_logits,
     _model_logits,
     _ModelBundle,
+    _onnx_thread_count,
     _read_audio,
 )
 
@@ -93,3 +95,20 @@ class RecognitionTests(unittest.TestCase):
     def test_log_softmax_normalizes_each_frame(self) -> None:
         result = _log_softmax(np.array([[1.0, 2.0]], dtype=np.float32))
         self.assertAlmostEqual(float(np.exp(result).sum()), 1.0)
+
+    def test_onnx_threads_default_to_eight_or_cpu_count(self) -> None:
+        with patch(
+            "phonomatch.infrastructure.recognition.os.cpu_count", return_value=16
+        ):
+            self.assertEqual(_onnx_thread_count(), 8)
+
+    def test_onnx_threads_accepts_a_positive_environment_override(self) -> None:
+        with patch.dict("os.environ", {"PHONOMATCH_ONNX_THREADS": "4"}):
+            self.assertEqual(_onnx_thread_count(), 4)
+
+    def test_onnx_threads_rejects_an_invalid_environment_override(self) -> None:
+        with (
+            patch.dict("os.environ", {"PHONOMATCH_ONNX_THREADS": "zero"}),
+            self.assertRaisesRegex(ValueError, "positive integer"),
+        ):
+            _onnx_thread_count()
