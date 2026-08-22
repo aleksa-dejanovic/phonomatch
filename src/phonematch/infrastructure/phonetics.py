@@ -57,15 +57,9 @@ def phone_sequences_for_words(words: Mapping[str, str]) -> dict[str, tuple[str, 
 
 @lru_cache(maxsize=1)
 def _distance_calculator() -> Any:
-    # PanPhon 0.21 imports pkg_resources, which emits a warning even though the
-    # compatible Setuptools version is pinned. Keep this suppression local so
-    # unrelated dependency and application warnings remain visible.
+    # PanPhon 0.22 emits this warning while importing its generated segment
+    # definitions. Keep it local so unrelated deprecation warnings are visible.
     with warnings.catch_warnings():
-        warnings.filterwarnings(
-            "ignore",
-            message=r"pkg_resources is deprecated as an API\..*",
-            category=UserWarning,
-        )
         warnings.filterwarnings(
             "ignore",
             message=r"invalid escape sequence .*",

@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -71,7 +71,8 @@ def decode_phrases(
     nodes = _index_nodes(root)
     beams: dict[BeamState, _BeamEntry] = {((), ()): _BeamEntry(blank_score=0.0)}
 
-    for frame in log_probabilities:
+    for frame_value in log_probabilities:
+        frame = cast(np.ndarray[Any, np.dtype[np.float64]], frame_value)
         next_beams: dict[BeamState, _BeamEntry] = {}
         for state, entry in beams.items():
             completed, current = state
