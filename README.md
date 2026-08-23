@@ -139,6 +139,14 @@ address is `127.0.0.1:8765`; use `--host` and `--port` to change it. Use a
 non-loopback host only on a trusted network: this deliberately small service
 does not include authentication or TLS.
 
+To let a client release model memory during periods of inactivity, start with
+`--enable-model-lifecycle`. This opt-in switch exposes `POST /v1/model/unload`,
+which releases the cached ONNX session and runs Python garbage collection. On
+Linux systems with glibc, it also asks the native allocator to return unused
+heap pages to the OS. `POST /v1/model/load` loads the model again. Model files remain on disk,
+so reloading normally does not download them. Lifecycle operations wait for any
+in-flight recognition request to finish before changing the model cache.
+
 Send a 16-bit PCM WAV body to `POST /v1/recognize` for a single-word result:
 
 ```console

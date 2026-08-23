@@ -6,7 +6,13 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from phonomatch.exceptions import RecognitionError
-from phonomatch.interfaces.cli import _percentage, _positive_float, _positive_int, main
+from phonomatch.interfaces.cli import (
+    _percentage,
+    _positive_float,
+    _positive_int,
+    build_parser,
+    main,
+)
 
 
 class CliTests(unittest.TestCase):
@@ -18,6 +24,14 @@ class CliTests(unittest.TestCase):
         ):
             with self.assertRaises(argparse.ArgumentTypeError):
                 validator(value)
+
+    def test_model_lifecycle_is_opt_in(self) -> None:
+        self.assertFalse(build_parser().parse_args([]).enable_model_lifecycle)
+        self.assertTrue(
+            build_parser()
+            .parse_args(["--enable-model-lifecycle"])
+            .enable_model_lifecycle
+        )
 
     def test_main_renders_accepted_word_result(self) -> None:
         analyzer = SimpleNamespace(

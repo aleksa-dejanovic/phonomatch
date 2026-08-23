@@ -36,6 +36,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="server port (default: 8765)",
     )
     parser.add_argument(
+        "--enable-model-lifecycle",
+        action="store_true",
+        help="enable server endpoints that load or unload the speech model",
+    )
+    parser.add_argument(
         "--phrase",
         action="store_true",
         help="recognize a sequence of vocabulary words",
@@ -95,7 +100,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 ),
                 flush=True,
             )
-            serve(args.host, args.port, analyzer)
+            serve(
+                args.host,
+                args.port,
+                analyzer,
+                enable_model_lifecycle=args.enable_model_lifecycle,
+            )
             return 0
         prompt = (
             "● Listening — say a phrase..."

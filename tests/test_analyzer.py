@@ -50,6 +50,13 @@ class AnalyzerTests(unittest.TestCase):
 
         preload.assert_called_once_with("example/model", "immutable-commit")
 
+    def test_unload_model_releases_cached_models(self) -> None:
+        analyzer = PhonoMatch({"grun": "ɡrun"})
+        with patch("phonomatch.application.analyzer.unload_models") as unload:
+            analyzer.unload_model()
+
+        unload.assert_called_once_with()
+
     def test_listen_reports_when_recording_is_complete(self) -> None:
         analyzer = PhonoMatch({"grun": "ɡrun", "naku": "naku"})
         events: list[str] = []

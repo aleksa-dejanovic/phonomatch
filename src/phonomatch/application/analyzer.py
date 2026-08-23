@@ -22,6 +22,7 @@ from ..infrastructure.recognition import (
     load_model,
     speech_to_ipa,
     speech_to_phrase,
+    unload_models,
 )
 
 
@@ -104,6 +105,10 @@ class PhonoMatch:
     def load_model(self) -> None:
         """Load the speech model now so later recognition avoids startup delay."""
         load_model(self._model_id, self._model_revision)
+
+    def unload_model(self) -> None:
+        """Release the cached speech model and request Python memory cleanup."""
+        unload_models()
 
     def match_ipa(self, ipa: str) -> AnalysisResult:
         """Match an existing IPA transcription without recording audio."""

@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import ctypes
 import json
 import math
 import os
+import sys
 import wave
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from functools import lru_cache
+from gc import collect
 from pathlib import Path
 from typing import Any, Optional, cast
 
@@ -114,6 +117,32 @@ def load_model(
         raise RecognitionError(
             f"could not load speech recognition model: {exc}"
         ) from exc
+
+
+def unload_models() -> None:
+    """Release cached recognition sessions so their memory can be reclaimed.
+
+    This only releases in-process model objects. Downloaded model files remain in
+    the Hugging Face cache, so a later :func:`load_model` normally needs no
+    network access. On Linux, also ask the C allocator to return unused heap
+    pages to the operating system when the platform supports it.
+    """
+    _model_bundle.cache_clear()
+    collect()
+    _trim_allocator()
+
+
+def _trim_allocator() -> None:
+    """Return unused glibc heap pages to Linux when ``malloc_trim`` is present."""
+    if sys.platform != "linux":
+        return
+    try:
+        malloc_trim = ctypes.CDLL(None).malloc_trim
+    except (AttributeError, OSError):
+        return
+    malloc_trim.argtypes = [ctypes.c_size_t]
+    malloc_trim.restype = ctypes.c_int
+    malloc_trim(0)
 
 
 def speech_to_ipa(
