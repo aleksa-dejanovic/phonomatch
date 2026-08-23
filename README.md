@@ -126,6 +126,42 @@ phonomatch --help
 Exit codes are `0` for an accepted match, `2` for an ambiguous or unknown
 utterance, and `1` for an operational error.
 
+## Local HTTP service
+
+Run PhonoMatch as a localhost-only microservice:
+
+```console
+phonomatch --server
+```
+
+The model is loaded once at startup, then requests reuse it. The default bind
+address is `127.0.0.1:8765`; use `--host` and `--port` to change it. Use a
+non-loopback host only on a trusted network: this deliberately small service
+does not include authentication or TLS.
+
+To let a client release model memory during periods of inactivity, start with
+`--enable-model-lifecycle`. This opt-in switch exposes `POST /v1/model/unload`,
+which releases the cached ONNX session and runs Python garbage collection. On
+Linux systems with glibc, it also asks the native allocator to return unused
+heap pages to the OS. `POST /v1/model/load` loads the model again. Model files remain on disk,
+so reloading normally does not download them. Lifecycle operations wait for any
+in-flight recognition request to finish before changing the model cache.
+
+Send a 16-bit PCM WAV body to `POST /v1/recognize` for a single-word result:
+
+```console
+curl --data-binary @recording.wav \
+  -H 'Content-Type: audio/wav' \
+  http://127.0.0.1:8765/v1/recognize
+```
+
+For lexicon-constrained phrase recognition, post the same audio to
+`/v1/recognize/phrase`. Responses are JSON forms of the Python result models,
+with an additional top-level `accepted` boolean. `GET /health` returns
+`{"status":"ok"}`. Requests must include `Content-Length`, use `audio/wav`,
+and are limited to 32 MiB. Audio is stored in a temporary file only while that
+request is being processed, then removed.
+
 ## Python API
 
 ```python

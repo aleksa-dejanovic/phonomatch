@@ -1,3 +1,4 @@
+import ctypes
 import json
 import tempfile
 import unittest
@@ -5,7 +6,7 @@ import wave
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, ClassVar
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import numpy as np
 
@@ -22,9 +23,11 @@ from phonomatch.infrastructure.recognition import (
     _normalize_audio,
     _onnx_thread_count,
     _read_audio,
+    _trim_allocator,
     load_model,
     speech_to_ipa,
     speech_to_phrase,
+    unload_models,
 )
 
 
@@ -145,6 +148,44 @@ class RecognitionTests(unittest.TestCase):
             self.assertRaisesRegex(RecognitionError, "missing model"),
         ):
             load_model()
+
+    def test_unload_models_clears_the_model_cache(self) -> None:
+        with (
+            patch(
+                "phonomatch.infrastructure.recognition._model_bundle.cache_clear"
+            ) as clear_cache,
+            patch(
+                "phonomatch.infrastructure.recognition._trim_allocator"
+            ) as trim_allocator,
+        ):
+            unload_models()
+
+        clear_cache.assert_called_once_with()
+        trim_allocator.assert_called_once_with()
+
+    def test_trim_allocator_uses_malloc_trim_on_linux(self) -> None:
+        library = SimpleNamespace(malloc_trim=Mock())
+        with (
+            patch("phonomatch.infrastructure.recognition.sys.platform", "linux"),
+            patch(
+                "phonomatch.infrastructure.recognition.ctypes.CDLL",
+                return_value=library,
+            ),
+        ):
+            _trim_allocator()
+
+        self.assertEqual(library.malloc_trim.argtypes, [ctypes.c_size_t])
+        self.assertIs(library.malloc_trim.restype, ctypes.c_int)
+        self.assertEqual(library.malloc_trim.call_args.args, (0,))
+
+    def test_trim_allocator_is_skipped_off_linux(self) -> None:
+        with (
+            patch("phonomatch.infrastructure.recognition.sys.platform", "darwin"),
+            patch("phonomatch.infrastructure.recognition.ctypes.CDLL") as load_library,
+        ):
+            _trim_allocator()
+
+        load_library.assert_not_called()
 
     def test_speech_to_ipa_decodes_mocked_model_logits(self) -> None:
         tokenizer = _CTCTokenizer({"<pad>": 0, "a": 1}, 0, (0,))
