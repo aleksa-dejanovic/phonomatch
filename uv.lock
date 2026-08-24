@@ -1245,40 +1245,82 @@ name = "phonomatch"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "panphon" },
+]
+
+[package.optional-dependencies]
+all = [
     { name = "huggingface-hub" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
     { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "onnxruntime" },
-    { name = "panphon" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
+    { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "sounddevice" },
+]
+microphone = [
+    { name = "huggingface-hub" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
+    { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "onnxruntime" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
+    { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "sounddevice" },
+]
+recognition = [
+    { name = "huggingface-hub" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
+    { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "onnxruntime" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
+    { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "coverage", extra = ["toml"] },
+    { name = "huggingface-hub" },
+    { name = "mypy" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
+    { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "onnxruntime" },
+    { name = "ruff" },
     { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
     { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "sounddevice" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "coverage", extra = ["toml"] },
-    { name = "mypy" },
-    { name = "ruff" },
-]
-
 [package.metadata]
 requires-dist = [
-    { name = "huggingface-hub", specifier = ">=0.30,<1" },
-    { name = "numpy", specifier = ">=1.26,<3" },
-    { name = "onnxruntime", specifier = ">=1.20,<1.24" },
+    { name = "huggingface-hub", marker = "extra == 'recognition'", specifier = ">=0.30,<1" },
+    { name = "numpy", marker = "extra == 'recognition'", specifier = ">=1.26,<3" },
+    { name = "onnxruntime", marker = "extra == 'recognition'", specifier = ">=1.20,<1.24" },
     { name = "panphon", specifier = "==0.22.2" },
-    { name = "scipy", specifier = ">=1.10,<2" },
-    { name = "sounddevice", specifier = ">=0.5.5" },
+    { name = "phonomatch", extras = ["microphone"], marker = "extra == 'all'" },
+    { name = "phonomatch", extras = ["recognition"], marker = "extra == 'microphone'" },
+    { name = "scipy", marker = "extra == 'recognition'", specifier = ">=1.10,<2" },
+    { name = "sounddevice", marker = "extra == 'microphone'", specifier = ">=0.5.5" },
 ]
+provides-extras = ["recognition", "microphone", "all"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "coverage", extras = ["toml"], specifier = ">=7.6,<8" },
+    { name = "huggingface-hub", specifier = ">=0.30,<1" },
     { name = "mypy", specifier = ">=1.14,<2" },
+    { name = "numpy", specifier = ">=1.26,<3" },
+    { name = "onnxruntime", specifier = ">=1.20,<1.24" },
     { name = "ruff", specifier = ">=0.12,<1" },
+    { name = "scipy", specifier = ">=1.10,<2" },
+    { name = "sounddevice", specifier = ">=0.5.5" },
 ]
 
 [[package]]

@@ -5,25 +5,52 @@ from __future__ import annotations
 import time
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from ..domain.config import DEFAULT_SETTINGS, DEFAULT_WORDS, MatchSettings
 from ..domain.matching import decide_match
 from ..domain.models import AnalysisResult, PhraseAnalysisResult, WordAnalysisResult
+from ..exceptions import OptionalDependencyError
 from ..infrastructure.audio import recorded_audio
 from ..infrastructure.phonetics import (
     phones_for_words,
     phonetic_distance,
     phonetic_maximum_distance,
 )
-from ..infrastructure.recognition import (
-    DEFAULT_MODEL_ID,
-    DEFAULT_MODEL_REVISION,
-    load_model,
-    speech_to_ipa,
-    speech_to_phrase,
-    unload_models,
-)
+
+DEFAULT_MODEL_ID = "onnx-community/wav2vec2-lv-60-espeak-cv-ft-ONNX"
+DEFAULT_MODEL_REVISION = "c69750f5043e5e1f8a71ab95dd3b98338c280c92"
+
+
+def _recognition_module() -> Any:
+    """Load speech recognition only when a recognition API is used."""
+    try:
+        from ..infrastructure import recognition
+    except ModuleNotFoundError as exc:
+        if exc.name in {"numpy", "scipy", "onnxruntime", "huggingface_hub"}:
+            raise OptionalDependencyError("recognition") from exc
+        raise
+    return recognition
+
+
+def speech_to_ipa(*args: object, **kwargs: object) -> str:
+    """Lazily dispatch to the optional speech-recognition integration."""
+    return str(_recognition_module().speech_to_ipa(*args, **kwargs))
+
+
+def speech_to_phrase(*args: object, **kwargs: object) -> Any:
+    """Lazily dispatch to the optional phrase-recognition integration."""
+    return _recognition_module().speech_to_phrase(*args, **kwargs)
+
+
+def load_model(*args: object, **kwargs: object) -> None:
+    """Lazily load the optional speech-recognition model."""
+    _recognition_module().load_model(*args, **kwargs)
+
+
+def unload_models() -> None:
+    """Lazily release optional cached speech-recognition models."""
+    _recognition_module().unload_models()
 
 
 class PhonoMatch:

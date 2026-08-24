@@ -15,12 +15,22 @@ from gc import collect
 from pathlib import Path
 from typing import Any, Optional, cast
 
-import numpy as np
-from scipy.signal import resample_poly
-
 from ..domain.ipa import normalize_ipa
-from ..exceptions import RecognitionError, UnsupportedPhoneError
+from ..exceptions import (
+    OptionalDependencyError,
+    RecognitionError,
+    UnsupportedPhoneError,
+)
 from .phonetics import phone_sequences_for_words
+
+try:
+    import numpy as np
+    from scipy.signal import resample_poly
+except ModuleNotFoundError as exc:
+    if exc.name in {"numpy", "scipy"}:
+        raise OptionalDependencyError("recognition") from exc
+    raise
+
 from .phrase_decoding import align_tokens, decode_phrases
 
 DEFAULT_MODEL_ID = "onnx-community/wav2vec2-lv-60-espeak-cv-ft-ONNX"
@@ -400,8 +410,13 @@ def _hypothesis_confidence(hypotheses: tuple[Any, ...]) -> float:
 
 @lru_cache(maxsize=2)
 def _model_bundle(model_id: str, revision: Optional[str]) -> _ModelBundle:
-    import onnxruntime
-    from huggingface_hub import hf_hub_download
+    try:
+        import onnxruntime
+        from huggingface_hub import hf_hub_download
+    except ModuleNotFoundError as exc:
+        if exc.name in {"onnxruntime", "huggingface_hub"}:
+            raise OptionalDependencyError("recognition") from exc
+        raise
 
     model_path = Path(model_id)
     is_local = model_path.is_dir()

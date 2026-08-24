@@ -47,8 +47,14 @@ application.
 Install from PyPI:
 
 ```console
-python -m pip install phonomatch
+python -m pip install "phonomatch[all]"
 ```
+
+For IPA-only matching, install `phonomatch` without extras. To analyze existing
+WAV files or use the recognition HTTP endpoints, install
+`phonomatch[recognition]`. Microphone recording requires
+`phonomatch[microphone]`; `phonomatch[all]` is an alias for that complete,
+interactive installation.
 
 PhonoMatch uses ONNX Runtime for CPU speech inference. It has no PyTorch,
 CUDA, or Transformers runtime dependency.

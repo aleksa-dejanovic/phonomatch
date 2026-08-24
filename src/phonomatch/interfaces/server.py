@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import tempfile
 from dataclasses import asdict
 from http import HTTPStatus
@@ -17,6 +18,7 @@ from ..domain.models import AnalysisResult, PhraseAnalysisResult
 from ..exceptions import PhonoMatchError
 
 MAX_AUDIO_BYTES = 32 * 1024 * 1024
+LOGGER = logging.getLogger(__name__)
 
 
 def result_payload(result: AnalysisResult | PhraseAnalysisResult) -> dict[str, Any]:
@@ -67,6 +69,7 @@ def create_server(
             except ValueError as exc:
                 self._send_error(HTTPStatus.BAD_REQUEST, str(exc))
             except PhonoMatchError as exc:
+                LOGGER.warning("recognition request failed: %s", exc)
                 self._send_error(HTTPStatus.UNPROCESSABLE_ENTITY, str(exc))
             else:
                 self._send_json(HTTPStatus.OK, result_payload(result))
@@ -76,14 +79,20 @@ def create_server(
                 with model_lock:
                     analyzer.load_model()
             except PhonoMatchError as exc:
+                LOGGER.warning("model load failed: %s", exc)
                 self._send_error(HTTPStatus.UNPROCESSABLE_ENTITY, str(exc))
             else:
                 self._send_json(HTTPStatus.OK, {"status": "loaded"})
 
         def _unload_model(self) -> None:
-            with model_lock:
-                analyzer.unload_model()
-            self._send_json(HTTPStatus.OK, {"status": "unloaded"})
+            try:
+                with model_lock:
+                    analyzer.unload_model()
+            except PhonoMatchError as exc:
+                LOGGER.warning("model unload failed: %s", exc)
+                self._send_error(HTTPStatus.UNPROCESSABLE_ENTITY, str(exc))
+            else:
+                self._send_json(HTTPStatus.OK, {"status": "unloaded"})
 
         def _read_audio(self) -> bytes:
             content_type = self.headers.get("Content-Type", "").split(";", 1)[0]

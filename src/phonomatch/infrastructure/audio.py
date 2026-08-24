@@ -10,7 +10,18 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
-from ..exceptions import AudioRecordingError
+from ..exceptions import AudioRecordingError, OptionalDependencyError
+
+
+def load_sounddevice() -> Any:
+    """Return SoundDevice or explain how to install microphone support."""
+    try:
+        import sounddevice
+    except ModuleNotFoundError as exc:
+        if exc.name == "sounddevice":
+            raise OptionalDependencyError("microphone") from exc
+        raise
+    return sounddevice
 
 
 @contextmanager
@@ -33,7 +44,7 @@ def recorded_audio(seconds: float = 2.0) -> Iterator[Path]:
 
 
 def _record_to_wav(seconds: float) -> Path:
-    import sounddevice as sd
+    sd = load_sounddevice()
 
     try:
         device_info: Any = sd.query_devices(kind="input")
