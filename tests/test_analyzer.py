@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
-from phonomatch import MatchSettings, PhonoMatch, listen_and_match
+from phonomatch import DEFAULT_WORDS, MatchSettings, PhonoMatch, listen_and_match
 from phonomatch.infrastructure.recognition import (
     PhraseTranscription,
     RecognizedWord,
@@ -12,6 +12,16 @@ from phonomatch.infrastructure.recognition import (
 
 
 class AnalyzerTests(unittest.TestCase):
+    def test_vocabulary_is_required_unless_defaults_are_explicit(self) -> None:
+        with self.assertRaisesRegex(ValueError, "word list is required"):
+            PhonoMatch()
+
+        self.assertEqual(PhonoMatch(default_words=True).words, DEFAULT_WORDS)
+
+    def test_explicit_and_default_vocabularies_are_mutually_exclusive(self) -> None:
+        with self.assertRaisesRegex(ValueError, "either words or default_words"):
+            PhonoMatch({"grun": "ɡrun"}, default_words=True)
+
     def test_empty_vocabulary_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "at least one"):
             PhonoMatch({})

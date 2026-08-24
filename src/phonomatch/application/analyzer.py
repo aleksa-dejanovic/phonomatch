@@ -58,12 +58,22 @@ class PhonoMatch:
 
     def __init__(
         self,
-        words: Mapping[str, str] = DEFAULT_WORDS,
+        words: Mapping[str, str] | None = None,
         settings: MatchSettings = DEFAULT_SETTINGS,
         *,
+        default_words: bool = False,
         model_id: str = DEFAULT_MODEL_ID,
         model_revision: Optional[str] = DEFAULT_MODEL_REVISION,
     ) -> None:
+        if words is None:
+            if not default_words:
+                raise ValueError(
+                    "a word list is required; pass words={'word': 'ipa'} or set "
+                    "default_words=True"
+                )
+            words = DEFAULT_WORDS
+        elif default_words:
+            raise ValueError("pass either words or default_words=True, not both")
         if not words:
             raise ValueError("at least one vocabulary word is required")
         self._words = dict(words)
@@ -182,10 +192,13 @@ class PhonoMatch:
 
 
 def listen_and_match(
-    words: Mapping[str, str] = DEFAULT_WORDS,
+    words: Mapping[str, str] | None = None,
     *,
     seconds: float = 2.0,
     settings: MatchSettings = DEFAULT_SETTINGS,
+    default_words: bool = False,
 ) -> AnalysisResult:
     """Convenience wrapper around :class:`PhonoMatch`."""
-    return PhonoMatch(words, settings).listen(seconds=seconds)
+    return PhonoMatch(words, settings, default_words=default_words).listen(
+        seconds=seconds
+    )

@@ -69,7 +69,7 @@ For a development checkout, use [`uv`](https://docs.astral.sh/uv/):
 
 ```console
 uv sync
-uv run phonomatch
+uv run phonomatch --default-words
 ```
 
 Use `uv sync --locked` in production and CI so dependency resolution cannot
@@ -101,7 +101,7 @@ Override this for a dedicated low-latency machine or a shared server with
 `PHONOMATCH_ONNX_THREADS`, for example:
 
 ```console
-PHONOMATCH_ONNX_THREADS=4 phonomatch
+PHONOMATCH_ONNX_THREADS=4 phonomatch --default-words
 ```
 
 The console loads the model before recording begins, announces when recording
@@ -121,13 +121,18 @@ download.
 Useful CLI options:
 
 ```console
-phonomatch --seconds 3
-phonomatch --phrase --seconds 5
-phonomatch --phrase --beam-size 96 --max-words 8
-phonomatch --max-distance 0.08
-phonomatch --color never
+phonomatch --default-words --seconds 3
+phonomatch --words vocabulary.json --phrase --seconds 5
+phonomatch --words vocabulary.json --phrase --beam-size 96 --max-words 8
+phonomatch --words vocabulary.json --max-distance 0.08
+phonomatch --words vocabulary.json --color never
 phonomatch --help
 ```
+
+Supply a vocabulary as a JSON object mapping words to IPA pronunciations, for
+example `{"grun": "ɡrun", "shaki": "ʃaki"}`. The built-in vocabulary is only
+available when explicitly enabled with `--default-words` or `default_words=True`
+in the Python API.
 
 Exit codes are `0` for an accepted match, `2` for an ambiguous or unknown
 utterance, and `1` for an operational error.
@@ -137,7 +142,7 @@ utterance, and `1` for an operational error.
 Run PhonoMatch as a localhost-only microservice:
 
 ```console
-phonomatch --server
+phonomatch --default-words --server
 ```
 
 The model is loaded once at startup, then requests reuse it. The default bind

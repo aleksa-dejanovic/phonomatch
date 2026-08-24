@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Optional
 
 from ..application.analyzer import PhonoMatch
@@ -24,6 +26,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--server",
         action="store_true",
         help="run a local HTTP recognition service",
+    )
+    vocabulary = parser.add_mutually_exclusive_group()
+    vocabulary.add_argument(
+        "--words",
+        type=Path,
+        metavar="PATH",
+        help="JSON file mapping each word to its IPA pronunciation",
+    )
+    vocabulary.add_argument(
+        "--default-words",
+        action="store_true",
+        help="use PhonoMatch's built-in demonstration vocabulary",
     )
     parser.add_argument(
         "--host",
@@ -90,7 +104,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(palette.cyan("■ Recording stopped — recognizing..."), flush=True)
 
     try:
-        analyzer = PhonoMatch(settings=settings)
+        if args.words is None and not args.default_words:
+            raise ValueError(
+                "a word list is required; use --words PATH or --default-words"
+            )
+        words = _read_words(args.words) if args.words is not None else None
+        analyzer = PhonoMatch(
+            words,
+            settings=settings,
+            default_words=args.default_words,
+        )
         print(palette.cyan("◌ Loading speech model..."), flush=True)
         analyzer.load_model()
         print(palette.green("● Model ready"), flush=True)
@@ -164,3 +187,18 @@ def _port(value: str) -> int:
     if not 1 <= parsed <= 65535:
         raise argparse.ArgumentTypeError("must be between 1 and 65535")
     return parsed
+
+
+def _read_words(path: Path) -> dict[str, str]:
+    """Load a vocabulary from a JSON object of word-to-IPA entries."""
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"could not read vocabulary file {path}: {exc}") from exc
+    if not isinstance(payload, dict) or not all(
+        isinstance(word, str) and isinstance(ipa, str) for word, ipa in payload.items()
+    ):
+        raise ValueError(
+            "vocabulary JSON must be an object mapping words to IPA strings"
+        )
+    return payload
