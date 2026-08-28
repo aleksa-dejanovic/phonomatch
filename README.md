@@ -255,8 +255,12 @@ analyzer = PhonoMatch(
 )
 ```
 
-The model must be compatible with `AutoModelForCTC` and its tokenizer must use
-phone tokens matching the vocabulary's normalized IPA phones.
+PhonoMatch loads ONNX artifacts directly; it does not load Transformers models.
+The local directory or Hugging Face repository must contain `vocab.json` and
+`onnx/model_q4f16.onnx`. The vocabulary must map the normalized IPA phone tokens
+used by your configured words to model token IDs. The ONNX graph must accept the
+Wav2Vec2 waveform input and return CTC logits in the same format as the default
+model.
 
 Expected operational exceptions inherit from `PhonoMatchError`:
 
