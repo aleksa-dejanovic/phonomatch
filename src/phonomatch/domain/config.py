@@ -18,6 +18,15 @@ DEFAULT_WORDS: Mapping[str, str] = MappingProxyType(
         "dracarys": "draˈkarys",
         "lykiri": "lyˈkiri",
         "dohaeras": "dohaeˈra:s",
+        "umbas": "ˈʊmbæs",
+        "rybas": "ˈriːbəs",
+        "mazis": "mˈæ.ziz",
+        "naejot": "ˈnaeɟot",
+        "soves": "ˈsuːvɛs",
+        "vezos": "ˈˈveːzos",
+        "kepus": "ˈkɛpus",
+        "sovetes": "soˈvetes",
+        "drakaryssy": "drakaˈryssy",
     }
 )
 

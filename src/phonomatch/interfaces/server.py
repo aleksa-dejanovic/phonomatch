@@ -12,7 +12,7 @@ from dataclasses import asdict
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from threading import BoundedSemaphore, Lock, RLock
+from threading import BoundedSemaphore, Condition, Lock
 from typing import Any, cast
 from urllib.parse import urlparse
 
@@ -34,6 +34,55 @@ class RequestTimeoutError(ValueError):
 
 class ServerBusyError(ValueError):
     """Raised when accepting an upload would exceed server capacity."""
+
+
+class ModelLifecycleGate:
+    """Coordinate parallel recognition with exclusive model lifecycle changes.
+
+    Recognition leases may coexist. Once a lifecycle operation starts, new
+    recognition work is rejected so an unload cannot be starved by traffic;
+    the lifecycle operation then waits for existing leases to finish.
+    """
+
+    def __init__(self) -> None:
+        self._condition = Condition()
+        self._active_recognitions = 0
+        self._lifecycle_in_progress = False
+
+    @contextmanager
+    def recognition(self) -> Generator[None, None, None]:
+        """Acquire a shared lease for one recognition request."""
+        with self._condition:
+            if self._lifecycle_in_progress:
+                raise ServerBusyError(
+                    "model lifecycle operation is in progress; try again later"
+                )
+            self._active_recognitions += 1
+        try:
+            yield
+        finally:
+            with self._condition:
+                self._active_recognitions -= 1
+                if self._active_recognitions == 0:
+                    self._condition.notify_all()
+
+    @contextmanager
+    def lifecycle(self) -> Generator[None, None, None]:
+        """Acquire exclusive access, after current recognition work drains."""
+        with self._condition:
+            if self._lifecycle_in_progress:
+                raise ServerBusyError(
+                    "model lifecycle operation is already in progress; try again later"
+                )
+            self._lifecycle_in_progress = True
+            while self._active_recognitions:
+                self._condition.wait()
+        try:
+            yield
+        finally:
+            with self._condition:
+                self._lifecycle_in_progress = False
+                self._condition.notify_all()
 
 
 class BoundedThreadingHTTPServer(ThreadingHTTPServer):
@@ -134,9 +183,9 @@ def create_server(
 ) -> BoundedThreadingHTTPServer:
     """Create a server without starting it, primarily for embedding and tests."""
 
-    # Recognition requests and lifecycle operations share a process-wide model
-    # cache.  Do not clear it while an ONNX session is serving a request.
-    model_lock = RLock()
+    # Recognition requests share the cached ONNX session. Lifecycle operations
+    # are exclusive and wait for already-running recognition to drain.
+    model_gate = ModelLifecycleGate()
 
     class RecognitionHandler(BaseHTTPRequestHandler):
         server_version = "PhonoMatch/0.1"
@@ -180,8 +229,10 @@ def create_server(
 
         def _load_model(self) -> None:
             try:
-                with model_lock:
+                with model_gate.lifecycle():
                     analyzer.load_model()
+            except ServerBusyError as exc:
+                self._send_error(HTTPStatus.SERVICE_UNAVAILABLE, str(exc))
             except PhonoMatchError as exc:
                 LOGGER.warning("model load failed: %s", exc)
                 self._send_error(HTTPStatus.UNPROCESSABLE_ENTITY, str(exc))
@@ -190,8 +241,10 @@ def create_server(
 
         def _unload_model(self) -> None:
             try:
-                with model_lock:
+                with model_gate.lifecycle():
                     analyzer.unload_model()
+            except ServerBusyError as exc:
+                self._send_error(HTTPStatus.SERVICE_UNAVAILABLE, str(exc))
             except PhonoMatchError as exc:
                 LOGGER.warning("model unload failed: %s", exc)
                 self._send_error(HTTPStatus.UNPROCESSABLE_ENTITY, str(exc))
@@ -243,7 +296,7 @@ def create_server(
         def _analyze(
             self, path: Path, *, phrase: bool
         ) -> AnalysisResult | PhraseAnalysisResult:
-            with model_lock:
+            with model_gate.recognition():
                 if phrase:
                     return analyzer.analyze_phrase_file(path)
                 return analyzer.analyze_file(path)

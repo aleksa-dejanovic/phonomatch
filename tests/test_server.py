@@ -4,6 +4,7 @@ import unittest
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
+from threading import Event, Thread
 from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import Mock, patch
@@ -18,6 +19,8 @@ from phonomatch.exceptions import RecognitionError
 from phonomatch.interfaces.server import (
     MAX_AUDIO_BYTES,
     BoundedThreadingHTTPServer,
+    ModelLifecycleGate,
+    ServerBusyError,
     create_server,
     result_payload,
     serve,
@@ -25,6 +28,74 @@ from phonomatch.interfaces.server import (
 
 
 class ServerTests(unittest.TestCase):
+    def test_model_gate_allows_recognition_requests_to_overlap(self) -> None:
+        gate = ModelLifecycleGate()
+        both_running = Event()
+        release = Event()
+        running = 0
+
+        def recognize() -> None:
+            nonlocal running
+            with gate.recognition():
+                running += 1
+                if running == 2:
+                    both_running.set()
+                release.wait(timeout=1)
+                running -= 1
+
+        workers = [Thread(target=recognize), Thread(target=recognize)]
+        for worker in workers:
+            worker.start()
+        self.assertTrue(both_running.wait(timeout=1))
+        release.set()
+        for worker in workers:
+            worker.join(timeout=1)
+            self.assertFalse(worker.is_alive())
+
+    def test_model_gate_drains_existing_work_and_rejects_new_recognition(self) -> None:
+        gate = ModelLifecycleGate()
+        recognition_started = Event()
+        release_recognition = Event()
+        lifecycle_started = Event()
+        release_lifecycle = Event()
+
+        def recognize() -> None:
+            with gate.recognition():
+                recognition_started.set()
+                release_recognition.wait(timeout=1)
+
+        def unload() -> None:
+            with gate.lifecycle():
+                lifecycle_started.set()
+                release_lifecycle.wait(timeout=1)
+
+        recognition = Thread(target=recognize)
+        recognition.start()
+        self.assertTrue(recognition_started.wait(timeout=1))
+        lifecycle = Thread(target=unload)
+        lifecycle.start()
+
+        with self.assertRaises(ServerBusyError), gate.recognition():
+            pass
+        self.assertFalse(lifecycle_started.is_set())
+
+        release_recognition.set()
+        self.assertTrue(lifecycle_started.wait(timeout=1))
+        release_lifecycle.set()
+        for worker in (recognition, lifecycle):
+            worker.join(timeout=1)
+            self.assertFalse(worker.is_alive())
+
+    def test_model_gate_rejects_a_second_lifecycle_operation(self) -> None:
+        gate = ModelLifecycleGate()
+
+        def second_lifecycle() -> None:
+            with gate.lifecycle():
+                pass
+
+        with gate.lifecycle(), self.assertRaises(ServerBusyError):
+            second_lifecycle()
+
     def test_result_payload_is_json_compatible_and_includes_acceptance(self) -> None:
         result = AnalysisResult(
             recognized_ipa="ɡrun",
