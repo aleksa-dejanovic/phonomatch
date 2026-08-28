@@ -17,7 +17,7 @@ separated from the runner-up, or not confident enough.
 
 - Python 3.10 or newer
 - A microphone and PortAudio for live recording
-- Approximately 1.3 GB of disk space for the default model
+- Approximately 200 MB of disk space for the default quantized ONNX model
 
 ## Platform support
 
@@ -75,6 +75,37 @@ Then confirm the command is available:
 phonomatch --help
 ```
 
+## Quick start
+
+Try the built-in demonstration vocabulary by recording a two-second utterance:
+
+```console
+phonomatch --default-words
+```
+
+When prompted, say one of the built-in words (for example, `naku`, `selim`, or
+`grun`). To use your own vocabulary, create a JSON object mapping display words
+to IPA pronunciations, then pass its path with `--words`:
+
+```json
+{"grun": "ɡrun", "shaki": "ʃaki"}
+```
+
+```console
+phonomatch --words vocabulary.json
+```
+
+The command reports the recognized IPA, its best vocabulary candidates, and
+whether the distance, separation, and confidence checks passed. A successful
+result begins like this (the recognized IPA and scores depend on the recording):
+
+```text
+PHONOMATCH
+================================================
+Heard    /ɡrun/
+Result   ✓ LIKELY MATCH
+```
+
 For a development checkout, use [`uv`](https://docs.astral.sh/uv/):
 
 ```console
@@ -92,7 +123,7 @@ Face cache, so model contents and licensing cannot drift silently. The ONNX
 model (`model_q4f16.onnx`) is approximately 197 MB, compared with the former
 1.2 GiB PyTorch checkpoint.
 
-## ONNX Runtime migration
+## How recognition works
 
 Speech recognition now runs the model directly with ONNX Runtime. Audio is
 resampled and normalized exactly as Wav2Vec2 expects, ONNX Runtime produces CTC
@@ -167,6 +198,13 @@ Linux systems with glibc, it also asks the native allocator to return unused
 heap pages to the OS. `POST /v1/model/load` loads the model again. Model files remain on disk,
 so reloading normally does not download them. Lifecycle operations wait for any
 in-flight recognition request to finish before changing the model cache.
+
+With lifecycle endpoints enabled, load or release the in-process model cache:
+
+```console
+curl -X POST http://127.0.0.1:8765/v1/model/unload
+curl -X POST http://127.0.0.1:8765/v1/model/load
+```
 
 Send a 16-bit PCM WAV body to `POST /v1/recognize` for a single-word result:
 
@@ -315,3 +353,14 @@ uv run ruff check . --fix
 
 Unit tests do not download the Wav2Vec2 model. A real-model smoke test requires
 network access on its first run and can be performed with the installed CLI.
+
+## License
+
+PhonoMatch is licensed under the [Apache License 2.0](LICENSE).
+
+## Contributing
+
+Contributions and bug reports are welcome. Please run `./scripts/check.sh`
+before opening a pull request, and use the
+[issue tracker](https://github.com/aleksa-dejanovic/phonomatch/issues) for bugs
+and feature requests.
