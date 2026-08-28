@@ -1,5 +1,4 @@
 import ctypes
-import json
 import tempfile
 import unittest
 import wave
@@ -59,28 +58,30 @@ class RecognitionTests(unittest.TestCase):
     def test_reads_stereo_pcm_and_resamples_to_model_rate(self) -> None:
         sample_rate = 8_000
         samples = np.zeros((sample_rate, 2), dtype=np.int16)
-        with tempfile.NamedTemporaryFile(suffix=".wav") as temporary:
-            with wave.open(temporary.name, "wb") as wav_file:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "recording.wav"
+            with wave.open(str(path), "wb") as wav_file:
                 wav_file.setnchannels(2)
                 wav_file.setsampwidth(2)
                 wav_file.setframerate(sample_rate)
                 wav_file.writeframes(samples.tobytes())
 
-            audio = _read_audio(Path(temporary.name))
+            audio = _read_audio(path)
 
         self.assertEqual(audio.dtype, np.float32)
         self.assertEqual(len(audio), TARGET_SAMPLE_RATE)
 
     def test_rejects_non_pcm16_wav(self) -> None:
-        with tempfile.NamedTemporaryFile(suffix=".wav") as temporary:
-            with wave.open(temporary.name, "wb") as wav_file:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "recording.wav"
+            with wave.open(str(path), "wb") as wav_file:
                 wav_file.setnchannels(1)
                 wav_file.setsampwidth(1)
                 wav_file.setframerate(TARGET_SAMPLE_RATE)
                 wav_file.writeframes(bytes(TARGET_SAMPLE_RATE))
 
             with self.assertRaisesRegex(RecognitionError, "16-bit PCM"):
-                _read_audio(Path(temporary.name))
+                _read_audio(path)
 
     def test_masks_tokens_outside_vocabulary(self) -> None:
         logits = np.zeros((1, 2, 4), dtype=np.float32)
@@ -99,19 +100,19 @@ class RecognitionTests(unittest.TestCase):
         self.assertEqual(decoded, ["aaɡ"])
 
     def test_ctc_tokenizer_reads_a_vocabulary_file(self) -> None:
-        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8") as vocabulary:
-            json.dump({"<pad>": 0, "<unk>": 1, "a": 2}, vocabulary)
-            vocabulary.flush()
-            tokenizer = _CTCTokenizer.from_file(vocabulary.name)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "vocab.json"
+            path.write_text('{"<pad>": 0, "<unk>": 1, "a": 2}', encoding="utf-8")
+            tokenizer = _CTCTokenizer.from_file(path)
         self.assertEqual(tokenizer.pad_token_id, 0)
         self.assertEqual(tokenizer.batch_decode(np.array([[2, 2, 0, 2]])), ["aa"])
 
     def test_ctc_tokenizer_rejects_an_invalid_vocabulary(self) -> None:
-        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8") as vocabulary:
-            json.dump({"a": "not-an-id"}, vocabulary)
-            vocabulary.flush()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "vocab.json"
+            path.write_text('{"a": "not-an-id"}', encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "<pad>"):
-                _CTCTokenizer.from_file(vocabulary.name)
+                _CTCTokenizer.from_file(path)
 
     def test_model_session_receives_normalized_batched_audio(self) -> None:
         tokenizer = _CTCTokenizer({"<pad>": 0}, 0, (0,))
@@ -167,7 +168,10 @@ class RecognitionTests(unittest.TestCase):
     def test_trim_allocator_uses_malloc_trim_on_linux(self) -> None:
         library = SimpleNamespace(malloc_trim=Mock())
         with (
-            patch("phonomatch.infrastructure.recognition.sys.platform", "linux"),
+            patch(
+                "phonomatch.infrastructure.recognition.platform.system",
+                return_value="Linux",
+            ),
             patch(
                 "phonomatch.infrastructure.recognition.ctypes.CDLL",
                 return_value=library,
@@ -181,7 +185,10 @@ class RecognitionTests(unittest.TestCase):
 
     def test_trim_allocator_is_skipped_off_linux(self) -> None:
         with (
-            patch("phonomatch.infrastructure.recognition.sys.platform", "darwin"),
+            patch(
+                "phonomatch.infrastructure.recognition.platform.system",
+                return_value="Darwin",
+            ),
             patch("phonomatch.infrastructure.recognition.ctypes.CDLL") as load_library,
         ):
             _trim_allocator()

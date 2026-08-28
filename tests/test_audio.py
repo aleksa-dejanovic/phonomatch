@@ -1,4 +1,5 @@
 import sys
+import tempfile
 import unittest
 import wave
 from pathlib import Path
@@ -25,15 +26,18 @@ class AudioTests(unittest.TestCase):
                 pass
 
     def test_removes_recording_after_context_exits(self) -> None:
-        path = Path("/tmp/phonomatch-test-recording.wav")
-        path.write_bytes(b"audio")
-        with (
-            patch("phonomatch.infrastructure.audio._record_to_wav", return_value=path),
-            recorded_audio() as recorded,
-        ):
-            self.assertEqual(recorded, path)
-            self.assertTrue(path.exists())
-        self.assertFalse(path.exists())
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "recording.wav"
+            path.write_bytes(b"audio")
+            with (
+                patch(
+                    "phonomatch.infrastructure.audio._record_to_wav", return_value=path
+                ),
+                recorded_audio() as recorded,
+            ):
+                self.assertEqual(recorded, path)
+                self.assertTrue(path.exists())
+            self.assertFalse(path.exists())
 
     def test_wraps_unexpected_recording_errors(self) -> None:
         with (

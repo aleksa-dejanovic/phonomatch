@@ -6,7 +6,7 @@ import ctypes
 import json
 import math
 import os
-import sys
+import platform
 import wave
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
@@ -144,7 +144,7 @@ def unload_models() -> None:
 
 def _trim_allocator() -> None:
     """Return unused glibc heap pages to Linux when ``malloc_trim`` is present."""
-    if sys.platform != "linux":
+    if platform.system() != "Linux":
         return
     try:
         malloc_trim = ctypes.CDLL(None).malloc_trim
