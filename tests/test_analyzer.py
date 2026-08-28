@@ -23,6 +23,15 @@ class AnalyzerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "at least one"):
             PhonoMatch({})
 
+    def test_rejects_invalid_vocabulary_entries_at_construction(self) -> None:
+        for words, message in (
+            ({"valid": "a", "empty": "   "}, "empty.*no recognized IPA phones"),
+            ({" ": "a"}, "words must be non-empty strings"),
+            ({"valid": 1}, "valid.*must be a string"),
+        ):
+            with self.subTest(words=words), self.assertRaisesRegex(ValueError, message):
+                PhonoMatch(words)  # type: ignore[arg-type]
+
     def test_match_ipa_returns_analysis_result(self) -> None:
         result = PhonoMatch({"grun": "ɡrun", "naku": "naku"}).match_ipa("gɾun")
         self.assertEqual(result.recognized_ipa, "gɾun")
@@ -77,7 +86,7 @@ class AnalyzerTests(unittest.TestCase):
         with patch(
             "phonomatch.application.analyzer.speech_to_phrase",
             return_value=transcription,
-        ):
+        ) as recognize:
             result = analyzer.analyze_phrase_file("recording.wav")
 
         self.assertEqual(
@@ -86,6 +95,10 @@ class AnalyzerTests(unittest.TestCase):
         )
         self.assertTrue(result.accepted)
         self.assertEqual(result.alternative_words, ("grun", "grun"))
+        self.assertEqual(
+            recognize.call_args.args[1].phone_sequences,
+            {"grun": ("ɡ", "r", "u", "n"), "naku": ("n", "a", "k", "u")},
+        )
 
     def test_ambiguous_phrase_sequence_is_rejected(self) -> None:
         analyzer = PhonoMatch({"grun": "ɡrun"})

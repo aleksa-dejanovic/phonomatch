@@ -11,6 +11,7 @@ from unittest.mock import Mock, patch
 import numpy as np
 
 from phonomatch import RecognitionError, UnsupportedPhoneError
+from phonomatch.infrastructure.phonetics import Vocabulary
 from phonomatch.infrastructure.recognition import (
     TARGET_SAMPLE_RATE,
     _CTCTokenizer,
@@ -243,10 +244,6 @@ class RecognitionTests(unittest.TestCase):
                 return_value=logits,
             ),
             patch(
-                "phonomatch.infrastructure.recognition.phone_sequences_for_words",
-                return_value={"word": ("a",)},
-            ),
-            patch(
                 "phonomatch.infrastructure.recognition.decode_phrases",
                 return_value=(hypothesis,),
             ),
@@ -255,19 +252,15 @@ class RecognitionTests(unittest.TestCase):
                 return_value=(span,),
             ),
         ):
-            result = speech_to_phrase("recording.wav", {"word": "a"})
+            result = speech_to_phrase(
+                "recording.wav",
+                Vocabulary.from_words({"word": "a"}),
+            )
         self.assertEqual(result.words[0].word, "word")
         self.assertEqual(result.words[0].ipa, "a")
         self.assertEqual(result.confidence, 1.0)
 
-    def test_phrase_decoding_rejects_empty_or_unsupported_vocabulary(self) -> None:
-        with (
-            patch(
-                "phonomatch.infrastructure.recognition.Path.is_file", return_value=True
-            ),
-            self.assertRaisesRegex(ValueError, "at least one vocabulary"),
-        ):
-            speech_to_phrase("recording.wav", {})
+    def test_phrase_decoding_rejects_unsupported_vocabulary(self) -> None:
         tokenizer = _CTCTokenizer({"<pad>": 0, "a": 1}, 0, (0,))
         bundle = _ModelBundle(tokenizer, object())
         with (
@@ -286,13 +279,12 @@ class RecognitionTests(unittest.TestCase):
                 "phonomatch.infrastructure.recognition._model_logits",
                 return_value=np.zeros((1, 1, 2)),
             ),
-            patch(
-                "phonomatch.infrastructure.recognition.phone_sequences_for_words",
-                return_value={"word": ("x",)},
-            ),
             self.assertRaisesRegex(UnsupportedPhoneError, "x"),
         ):
-            speech_to_phrase("recording.wav", {"word": "x"})
+            speech_to_phrase(
+                "recording.wav",
+                Vocabulary.from_words({"word": "x"}),
+            )
 
     def test_onnx_threads_default_to_eight_or_cpu_count(self) -> None:
         with patch(

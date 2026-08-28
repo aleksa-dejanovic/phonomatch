@@ -10,6 +10,7 @@ from typing import Optional
 from ..domain.config import DEFAULT_SETTINGS, MatchSettings
 from ..domain.models import AnalysisResult, PhraseAnalysisResult
 from ..infrastructure.audio import recorded_audio
+from ..infrastructure.phonetics import Vocabulary
 from .analyzer import DEFAULT_MODEL_ID, DEFAULT_MODEL_REVISION, Analyzer
 
 Recording = Callable[[float], AbstractContextManager[Path]]
@@ -29,13 +30,29 @@ class PhonoMatch:
         record: Recording = recorded_audio,
     ) -> None:
         self._analyzer = Analyzer(
-            words,
+            self._create_vocabulary(words, default_words=default_words),
             settings,
-            default_words=default_words,
             model_id=model_id,
             model_revision=model_revision,
         )
         self._record = record
+
+    @staticmethod
+    def _create_vocabulary(
+        words: Mapping[str, str] | None, *, default_words: bool
+    ) -> Vocabulary:
+        if words is None:
+            if not default_words:
+                raise ValueError(
+                    "a word list is required; pass words={'word': 'ipa'} or set "
+                    "default_words=True"
+                )
+            from ..domain.config import DEFAULT_WORDS
+
+            return Vocabulary.from_words(DEFAULT_WORDS)
+        if default_words:
+            raise ValueError("pass either words or default_words=True, not both")
+        return Vocabulary.from_words(words)
 
     @property
     def words(self) -> Mapping[str, str]:

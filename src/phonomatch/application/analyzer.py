@@ -7,12 +7,12 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Optional
 
-from ..domain.config import DEFAULT_SETTINGS, DEFAULT_WORDS, MatchSettings
+from ..domain.config import DEFAULT_SETTINGS, MatchSettings
 from ..domain.matching import decide_match
 from ..domain.models import AnalysisResult, PhraseAnalysisResult, WordAnalysisResult
 from ..exceptions import OptionalDependencyError
 from ..infrastructure.phonetics import (
-    phones_for_words,
+    Vocabulary,
     phonetic_distance,
     phonetic_maximum_distance,
 )
@@ -57,41 +57,28 @@ class Analyzer:
 
     def __init__(
         self,
-        words: Mapping[str, str] | None = None,
+        vocabulary: Vocabulary,
         settings: MatchSettings = DEFAULT_SETTINGS,
         *,
-        default_words: bool = False,
         model_id: str = DEFAULT_MODEL_ID,
         model_revision: Optional[str] = DEFAULT_MODEL_REVISION,
     ) -> None:
-        if words is None:
-            if not default_words:
-                raise ValueError(
-                    "a word list is required; pass words={'word': 'ipa'} or set "
-                    "default_words=True"
-                )
-            words = DEFAULT_WORDS
-        elif default_words:
-            raise ValueError("pass either words or default_words=True, not both")
-        if not words:
-            raise ValueError("at least one vocabulary word is required")
-        self._words = dict(words)
+        self._vocabulary = vocabulary
         self._settings = settings
-        self._phones = phones_for_words(self._words)
         self._model_id = model_id
         self._model_revision = model_revision
 
     @property
     def words(self) -> Mapping[str, str]:
         """Return a defensive copy of the analyzer vocabulary."""
-        return dict(self._words)
+        return dict(self._vocabulary.words)
 
     def analyze_file(self, wav_path: str | Path) -> AnalysisResult:
         """Transcribe and match an existing WAV file."""
         started_at = time.perf_counter()
         ipa = speech_to_ipa(
             wav_path,
-            self._phones,
+            self._vocabulary.phones,
             model_id=self._model_id,
             model_revision=self._model_revision,
         )
@@ -113,7 +100,7 @@ class Analyzer:
         started_at = time.perf_counter()
         transcription = speech_to_phrase(
             wav_path,
-            self._words,
+            self._vocabulary,
             model_id=self._model_id,
             model_revision=self._model_revision,
             beam_size=beam_size,
@@ -150,7 +137,7 @@ class Analyzer:
         """Match an existing IPA transcription without recording audio."""
         match = decide_match(
             ipa,
-            self._words,
+            self._vocabulary.words,
             phonetic_distance,
             maximum_distance_function=phonetic_maximum_distance,
             settings=self._settings,

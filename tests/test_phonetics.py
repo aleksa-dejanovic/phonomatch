@@ -1,8 +1,8 @@
 import unittest
 
-from phonomatch import DEFAULT_WORDS, phones_for_words
+from phonomatch import DEFAULT_WORDS
 from phonomatch.infrastructure.phonetics import (
-    phone_sequences_for_words,
+    Vocabulary,
     phonetic_distance,
     phonetic_maximum_distance,
 )
@@ -10,7 +10,7 @@ from phonomatch.infrastructure.phonetics import (
 
 class PhoneticsTests(unittest.TestCase):
     def test_phone_inventory_is_derived_from_all_words(self) -> None:
-        phones = phones_for_words(DEFAULT_WORDS)
+        phones = Vocabulary.from_words(DEFAULT_WORDS).phones
         self.assertIn("ɡ", phones)
         self.assertIn("aː", phones)
         self.assertIn("ʃ", phones)
@@ -23,10 +23,12 @@ class PhoneticsTests(unittest.TestCase):
         self.assertLessEqual(distance, maximum)
 
     def test_phone_sequences_are_derived_for_each_vocabulary_word(self) -> None:
-        sequences = phone_sequences_for_words({"grun": "ɡrun", "shaki": "ʃaki"})
+        sequences = Vocabulary.from_words(
+            {"grun": "ɡrun", "shaki": "ʃaki"}
+        ).phone_sequences
         self.assertEqual(sequences["grun"], ("ɡ", "r", "u", "n"))
         self.assertEqual(sequences["shaki"], ("ʃ", "a", "k", "i"))
 
     def test_phone_sequences_reject_unrecognized_pronunciations(self) -> None:
         with self.assertRaisesRegex(ValueError, "no recognized IPA phones"):
-            phone_sequences_for_words({"invalid": "   "})
+            Vocabulary.from_words({"invalid": "   "})

@@ -21,7 +21,7 @@ from ..exceptions import (
     RecognitionError,
     UnsupportedPhoneError,
 )
-from .phonetics import phone_sequences_for_words
+from .phonetics import Vocabulary
 
 try:
     import numpy as np
@@ -192,7 +192,7 @@ def speech_to_ipa(
 
 def speech_to_phrase(
     wav_path: str | Path,
-    words: Mapping[str, str],
+    vocabulary: Vocabulary,
     *,
     model_id: str = DEFAULT_MODEL_ID,
     model_revision: Optional[str] = DEFAULT_MODEL_REVISION,
@@ -205,21 +205,18 @@ def speech_to_phrase(
         raise RecognitionError(f"audio file does not exist: {path}")
     if path.suffix.lower() != ".wav":
         raise RecognitionError("Wav2Vec2Phoneme requires WAV input")
-    if not words:
-        raise ValueError("at least one vocabulary word is required")
-
     try:
         audio = _read_audio(path)
         bundle = _model_bundle(model_id, model_revision)
         logits = _model_logits(audio, bundle)
-        vocabulary = bundle.tokenizer.get_vocab()
-        phone_sequences = phone_sequences_for_words(words)
+        token_vocabulary = bundle.tokenizer.get_vocab()
+        word_phone_sequences = vocabulary.phone_sequences
         unsupported = sorted(
             {
                 phone
-                for phones in phone_sequences.values()
+                for phones in word_phone_sequences.values()
                 for phone in phones
-                if phone not in vocabulary
+                if phone not in token_vocabulary
             }
         )
         if unsupported:
@@ -229,8 +226,8 @@ def speech_to_phrase(
             )
 
         pronunciations = {
-            word: tuple(vocabulary[phone] for phone in phones)
-            for word, phones in phone_sequences.items()
+            word: tuple(token_vocabulary[phone] for phone in phones)
+            for word, phones in word_phone_sequences.items()
         }
         blank_id = int(bundle.tokenizer.pad_token_id)
         allowed_ids = {

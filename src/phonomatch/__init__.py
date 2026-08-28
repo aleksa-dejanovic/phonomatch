@@ -24,7 +24,6 @@ from .exceptions import (
     RecognitionError,
     UnsupportedPhoneError,
 )
-from .infrastructure.phonetics import phones_for_words
 
 
 def load_model(*args: object, **kwargs: object) -> None:
@@ -55,5 +54,4 @@ __all__ = [
     "listen_and_match",
     "load_model",
     "normalize_ipa",
-    "phones_for_words",
 ]
