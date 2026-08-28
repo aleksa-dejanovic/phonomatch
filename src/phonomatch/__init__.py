@@ -3,9 +3,8 @@
 from .application.analyzer import (
     DEFAULT_MODEL_ID,
     DEFAULT_MODEL_REVISION,
-    PhonoMatch,
-    listen_and_match,
 )
+from .application.phonomatch import PhonoMatch, listen_and_match
 from .domain import (
     DEFAULT_WORDS,
     AnalysisResult,

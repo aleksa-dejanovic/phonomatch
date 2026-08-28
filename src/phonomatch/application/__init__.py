@@ -1,5 +1,6 @@
-"""Application services that coordinate sound-analysis workflows."""
+"""Application services and workflows for speech recognition and matching."""
 
-from .analyzer import PhonoMatch, listen_and_match
+from .analyzer import Analyzer
+from .phonomatch import PhonoMatch
 
-__all__ = ["PhonoMatch", "listen_and_match"]
+__all__ = ["Analyzer", "PhonoMatch"]

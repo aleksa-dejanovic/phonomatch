@@ -64,9 +64,10 @@ class CliTests(unittest.TestCase):
                 _read_words(path)
 
     def test_main_renders_accepted_word_result(self) -> None:
+        analyzer = SimpleNamespace(load_model=lambda: None)
         analyzer = SimpleNamespace(
             load_model=lambda: None,
-            listen=lambda **kwargs: SimpleNamespace(
+            record_and_analyze_word=lambda **kwargs: SimpleNamespace(
                 match=SimpleNamespace(accepted=True)
             ),
         )
@@ -85,7 +86,7 @@ class CliTests(unittest.TestCase):
     def test_main_returns_two_for_rejected_phrase(self) -> None:
         analyzer = SimpleNamespace(
             load_model=lambda: None,
-            listen_for_phrase=lambda **kwargs: SimpleNamespace(accepted=False),
+            record_and_analyze_phrase=lambda **kwargs: SimpleNamespace(accepted=False),
         )
         with (
             patch("phonomatch.interfaces.cli.PhonoMatch", return_value=analyzer),

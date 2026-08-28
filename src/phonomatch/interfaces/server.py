@@ -13,7 +13,7 @@ from threading import RLock
 from typing import Any
 from urllib.parse import urlparse
 
-from ..application.analyzer import PhonoMatch
+from ..application.phonomatch import PhonoMatch
 from ..domain.models import AnalysisResult, PhraseAnalysisResult
 from ..exceptions import PhonoMatchError
 

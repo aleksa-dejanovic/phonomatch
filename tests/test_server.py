@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import Mock, patch
 
-from phonomatch.application.analyzer import PhonoMatch
+from phonomatch.application.phonomatch import PhonoMatch
 from phonomatch.domain.models import (
     AnalysisResult,
     CandidateScore,

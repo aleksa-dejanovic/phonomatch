@@ -189,7 +189,8 @@ analyzer = PhonoMatch(
 )
 
 # Record, recognize, and match.
-result = analyzer.listen(seconds=2)
+
+result = analyzer.record_and_analyze_word(seconds=2)
 
 # Recognize an existing 16-bit PCM WAV file and match it.
 result = analyzer.analyze_file("recording.wav")
@@ -210,7 +211,7 @@ for word in phrase.words:
     )
 
 # Record and recognize a phrase. The default recording duration is four seconds.
-phrase = analyzer.listen_for_phrase(seconds=4)
+phrase = analyzer.record_and_analyze_phrase(seconds=4)
 
 # Match an existing IPA transcription without loading the speech model.
 result = analyzer.match_ipa("gɾun")
@@ -220,9 +221,11 @@ print(result.match.decision)
 print(result.match.best_candidate.word)
 ```
 
-The original `listen`, `analyze_file`, `match_ipa`, and `listen_and_match`
-single-word APIs are unchanged. Phrase acceptance requires both an unambiguous
-word sequence and successful independent matching of every aligned word.
+`PhonoMatch` is the public façade for the recording and analysis workflows.
+Its focused `Analyzer` service performs IPA and WAV analysis. `listen_and_match`
+remains available from the package root as a convenience function. Phrase
+acceptance requires both an unambiguous word sequence and successful
+independent matching of every aligned word.
 
 ### Phrase decoding
 

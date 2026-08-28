@@ -1,1 +1,1 @@
-"""User-facing command-line and terminal presentation adapters."""
+"""User-facing command-line, recording, and presentation adapters."""

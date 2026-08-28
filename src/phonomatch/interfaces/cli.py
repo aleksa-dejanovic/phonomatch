@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Optional
 
-from ..application.analyzer import PhonoMatch
+from ..application.phonomatch import PhonoMatch
 from ..domain.config import MatchSettings
 from ..exceptions import PhonoMatchError
 from .console import Palette, color_enabled, render_phrase_result, render_result
@@ -138,7 +138,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         print(palette.cyan(prompt), flush=True)
         if args.phrase:
-            phrase_result = analyzer.listen_for_phrase(
+            phrase_result = analyzer.record_and_analyze_phrase(
                 seconds=args.seconds,
                 beam_size=args.beam_size,
                 max_words=args.max_words,
@@ -148,7 +148,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print(render_phrase_result(phrase_result, settings, color=use_color))
             return 0 if phrase_result.accepted else 2
         else:
-            word_result = analyzer.listen(
+            word_result = analyzer.record_and_analyze_word(
                 seconds=args.seconds,
                 on_recording_complete=recording_complete,
             )

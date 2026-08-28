@@ -1,10 +1,7 @@
 import unittest
-from collections.abc import Iterator
-from contextlib import contextmanager
-from pathlib import Path
 from unittest.mock import patch
 
-from phonomatch import DEFAULT_WORDS, MatchSettings, PhonoMatch, listen_and_match
+from phonomatch import DEFAULT_WORDS, PhonoMatch
 from phonomatch.infrastructure.recognition import (
     PhraseTranscription,
     RecognizedWord,
@@ -67,36 +64,6 @@ class AnalyzerTests(unittest.TestCase):
 
         unload.assert_called_once_with()
 
-    def test_listen_reports_when_recording_is_complete(self) -> None:
-        analyzer = PhonoMatch({"grun": "ɡrun", "naku": "naku"})
-        events: list[str] = []
-
-        @contextmanager
-        def fake_recording(_seconds: float) -> Iterator[Path]:
-            events.append("recording_started")
-            yield Path("recording.wav")
-
-        expected = analyzer.match_ipa("gɾun")
-        with (
-            patch("phonomatch.application.analyzer.recorded_audio", fake_recording),
-            patch.object(
-                analyzer,
-                "load_model",
-                side_effect=lambda: events.append("model_loaded"),
-            ) as preload,
-            patch.object(analyzer, "analyze_file", return_value=expected),
-        ):
-            result = analyzer.listen(
-                on_recording_complete=lambda: events.append("recording_complete")
-            )
-
-        self.assertIs(result, expected)
-        self.assertEqual(
-            events,
-            ["model_loaded", "recording_started", "recording_complete"],
-        )
-        preload.assert_called_once_with()
-
     def test_analyze_phrase_file_matches_each_word_independently(self) -> None:
         analyzer = PhonoMatch({"grun": "ɡrun", "naku": "naku"})
         transcription = PhraseTranscription(
@@ -140,32 +107,3 @@ class AnalyzerTests(unittest.TestCase):
         words = dict(analyzer.words)
         words["extra"] = "extra"
         self.assertEqual(analyzer.words, {"grun": "ɡrun"})
-
-    def test_listen_for_phrase_forwards_decoder_options(self) -> None:
-        analyzer = PhonoMatch({"grun": "ɡrun"})
-        expected = object()
-
-        @contextmanager
-        def fake_recording(_seconds: float) -> Iterator[Path]:
-            yield Path("recording.wav")
-
-        with (
-            patch("phonomatch.application.analyzer.recorded_audio", fake_recording),
-            patch.object(analyzer, "load_model"),
-            patch.object(
-                analyzer, "analyze_phrase_file", return_value=expected
-            ) as analyze,
-        ):
-            result = analyzer.listen_for_phrase(seconds=3, beam_size=7, max_words=5)
-
-        self.assertIs(result, expected)
-        analyze.assert_called_once_with(Path("recording.wav"), beam_size=7, max_words=5)
-
-    def test_convenience_wrapper_constructs_and_listens(self) -> None:
-        expected = object()
-        with patch.object(PhonoMatch, "listen", return_value=expected) as listen:
-            result = listen_and_match(
-                {"grun": "ɡrun"}, seconds=3, settings=MatchSettings()
-            )
-        self.assertIs(result, expected)
-        listen.assert_called_once_with(seconds=3)

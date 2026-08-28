@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Optional
 
@@ -11,7 +11,6 @@ from ..domain.config import DEFAULT_SETTINGS, DEFAULT_WORDS, MatchSettings
 from ..domain.matching import decide_match
 from ..domain.models import AnalysisResult, PhraseAnalysisResult, WordAnalysisResult
 from ..exceptions import OptionalDependencyError
-from ..infrastructure.audio import recorded_audio
 from ..infrastructure.phonetics import (
     phones_for_words,
     phonetic_distance,
@@ -53,7 +52,7 @@ def unload_models() -> None:
     _recognition_module().unload_models()
 
 
-class PhonoMatch:
+class Analyzer:
     """Transcribe recordings and match them against an IPA vocabulary."""
 
     def __init__(
@@ -157,48 +156,3 @@ class PhonoMatch:
             settings=self._settings,
         )
         return AnalysisResult(recognized_ipa=ipa, match=match)
-
-    def listen(
-        self,
-        *,
-        seconds: float = 2.0,
-        on_recording_complete: Optional[Callable[[], None]] = None,
-    ) -> AnalysisResult:
-        """Record from the default microphone, transcribe, and match."""
-        self.load_model()
-        with recorded_audio(seconds) as wav_path:
-            if on_recording_complete is not None:
-                on_recording_complete()
-            return self.analyze_file(wav_path)
-
-    def listen_for_phrase(
-        self,
-        *,
-        seconds: float = 4.0,
-        beam_size: int = 64,
-        max_words: int = 12,
-        on_recording_complete: Optional[Callable[[], None]] = None,
-    ) -> PhraseAnalysisResult:
-        """Record and decode an arbitrary sequence of vocabulary words."""
-        self.load_model()
-        with recorded_audio(seconds) as wav_path:
-            if on_recording_complete is not None:
-                on_recording_complete()
-            return self.analyze_phrase_file(
-                wav_path,
-                beam_size=beam_size,
-                max_words=max_words,
-            )
-
-
-def listen_and_match(
-    words: Mapping[str, str] | None = None,
-    *,
-    seconds: float = 2.0,
-    settings: MatchSettings = DEFAULT_SETTINGS,
-    default_words: bool = False,
-) -> AnalysisResult:
-    """Convenience wrapper around :class:`PhonoMatch`."""
-    return PhonoMatch(words, settings, default_words=default_words).listen(
-        seconds=seconds
-    )
