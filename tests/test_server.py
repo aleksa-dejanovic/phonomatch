@@ -1,5 +1,7 @@
 import io
+import tempfile
 import unittest
+from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
@@ -14,6 +16,7 @@ from phonomatch.domain.models import (
 from phonomatch.exceptions import RecognitionError
 from phonomatch.interfaces.server import (
     MAX_AUDIO_BYTES,
+    BoundedThreadingHTTPServer,
     create_server,
     result_payload,
     serve,
@@ -94,24 +97,34 @@ class ServerTests(unittest.TestCase):
         handler = self._handler_for(SimpleNamespace())
         result = self._analysis_result()
         handler.path = "/v1/recognize/phrase"
-        handler._read_audio = Mock(return_value=b"wav")
+
+        @contextmanager
+        def temporary_audio() -> Any:
+            yield Path("upload.wav")
+
+        handler._temporary_audio = temporary_audio
         handler._analyze = Mock(return_value=result)
 
         handler.do_POST()
 
-        handler._analyze.assert_called_once_with(b"wav", phrase=True)
+        handler._analyze.assert_called_once_with(Path("upload.wav"), phrase=True)
         handler._send_json.assert_called_once_with(200, result_payload(result))
 
     def test_recognition_maps_bad_audio_and_recognition_errors(self) -> None:
         handler = self._handler_for(SimpleNamespace())
         handler.path = "/v1/recognize"
-        handler._read_audio = Mock(side_effect=ValueError("bad audio"))
+        handler._temporary_audio = Mock(side_effect=ValueError("bad audio"))
 
         handler.do_POST()
         handler._send_error.assert_called_once_with(400, "bad audio")
 
         handler._send_error.reset_mock()
-        handler._read_audio = Mock(return_value=b"wav")
+
+        @contextmanager
+        def temporary_audio() -> Any:
+            yield Path("upload.wav")
+
+        handler._temporary_audio = temporary_audio
         handler._analyze = Mock(side_effect=RecognitionError("model failed"))
         handler.do_POST()
         handler._send_error.assert_called_once_with(422, "model failed")
@@ -135,7 +148,7 @@ class ServerTests(unittest.TestCase):
 
         handler._send_error.assert_called_once_with(422, "offline")
 
-    def test_read_audio_validates_headers_and_body(self) -> None:
+    def test_temporary_audio_validates_headers_and_body(self) -> None:
         handler = self._handler_for(SimpleNamespace())
         cases: tuple[tuple[dict[str, str], bytes, str], ...] = (
             ({}, b"", "Content-Type"),
@@ -168,10 +181,13 @@ class ServerTests(unittest.TestCase):
             with self.subTest(headers=headers):
                 handler.headers = headers
                 handler.rfile = io.BytesIO(body)
-                with self.assertRaisesRegex(ValueError, message):
-                    handler._read_audio()
+                with (
+                    self.assertRaisesRegex(ValueError, message),
+                    handler._temporary_audio(),
+                ):
+                    pass
 
-    def test_read_audio_accepts_wav_content_type_parameters(self) -> None:
+    def test_temporary_audio_streams_wav_and_removes_it(self) -> None:
         handler = self._handler_for(SimpleNamespace())
         handler.headers = {
             "Content-Type": "audio/wav; charset=binary",
@@ -179,9 +195,54 @@ class ServerTests(unittest.TestCase):
         }
         handler.rfile = io.BytesIO(b"wav")
 
-        self.assertEqual(handler._read_audio(), b"wav")
+        with handler._temporary_audio() as path:
+            self.assertEqual(path.read_bytes(), b"wav")
+            self.assertTrue(path.exists())
+        self.assertFalse(path.exists())
 
-    def test_analyze_writes_then_removes_the_temporary_wav(self) -> None:
+    def test_recognition_returns_503_when_upload_capacity_is_exhausted(self) -> None:
+        handler = self._handler_for(SimpleNamespace())
+        handler.server.max_inflight_upload_bytes = 2
+        handler.path = "/v1/recognize"
+        handler.headers = {"Content-Type": "audio/wav", "Content-Length": "3"}
+        handler.rfile = io.BytesIO(b"wav")
+
+        handler.do_POST()
+
+        handler._send_error.assert_called_once_with(503, unittest.mock.ANY)
+
+    def test_recognition_returns_408_when_upload_times_out(self) -> None:
+        class TimedOutStream:
+            def read(self, _size: int) -> bytes:
+                raise TimeoutError()
+
+        handler = self._handler_for(SimpleNamespace())
+        handler.path = "/v1/recognize"
+        handler.headers = {"Content-Type": "audio/wav", "Content-Length": "3"}
+        handler.rfile = TimedOutStream()
+
+        handler.do_POST()
+
+        handler._send_error.assert_called_once_with(408, "request body timed out")
+
+    def test_server_rejects_connections_when_all_worker_slots_are_busy(self) -> None:
+        server = self._server_for(SimpleNamespace())
+        request = Mock()
+        try:
+            for _ in range(server.max_concurrent_requests):
+                self.assertTrue(server._request_slots.acquire(blocking=False))
+
+            with patch.object(server, "shutdown_request") as shutdown_request:
+                server.process_request(request, ("127.0.0.1", 1))
+
+            request.sendall.assert_called_once()
+            shutdown_request.assert_called_once_with(request)
+        finally:
+            for _ in range(server.max_concurrent_requests):
+                server._request_slots.release()
+            server.server_close()
+
+    def test_analyze_uses_the_temporary_wav(self) -> None:
         observed_paths: list[Path] = []
 
         def analyze(path: Path) -> AnalysisResult:
@@ -191,20 +252,28 @@ class ServerTests(unittest.TestCase):
             return self._analysis_result()
 
         handler = self._handler_for(SimpleNamespace(analyze_file=analyze))
-        result = handler._analyze(b"wav", phrase=False)
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temporary:
+            temporary.write(b"wav")
+            path = Path(temporary.name)
+        result = handler._analyze(path, phrase=False)
 
         self.assertEqual(result, self._analysis_result())
-        self.assertFalse(observed_paths[0].exists())
+        self.assertTrue(observed_paths[0].exists())
+        path.unlink()
 
     def test_analyze_routes_phrase_requests(self) -> None:
         analyze_phrase = Mock(return_value=self._analysis_result())
         handler = self._handler_for(SimpleNamespace(analyze_phrase_file=analyze_phrase))
 
-        result = handler._analyze(b"phrase", phrase=True)
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temporary:
+            temporary.write(b"phrase")
+            path = Path(temporary.name)
+        result = handler._analyze(path, phrase=True)
 
         self.assertEqual(result, self._analysis_result())
         analyzed_path = analyze_phrase.call_args.args[0]
-        self.assertFalse(analyzed_path.exists())
+        self.assertEqual(analyzed_path, path)
+        path.unlink()
 
     def test_send_json_writes_a_json_response(self) -> None:
         handler = self._handler_for(SimpleNamespace())
@@ -266,20 +335,26 @@ class ServerTests(unittest.TestCase):
     def _handler_for(
         self, analyzer: SimpleNamespace, *, enable_model_lifecycle: bool = False
     ) -> Any:
-        captured: dict[str, Any] = {}
-
-        class CapturingServer:
-            def __init__(self, _address: object, handler: type[object]) -> None:
-                captured["handler"] = handler
-
-        with patch("phonomatch.interfaces.server.ThreadingHTTPServer", CapturingServer):
-            create_server(
-                "127.0.0.1",
-                0,
-                cast(PhonoMatch, analyzer),
-                enable_model_lifecycle=enable_model_lifecycle,
-            )
-        handler = object.__new__(captured["handler"])
+        server = self._server_for(
+            analyzer, enable_model_lifecycle=enable_model_lifecycle
+        )
+        handler = cast(
+            Any,
+            object.__new__(cast(type[object], server.RequestHandlerClass)),
+        )
+        handler.server = server
+        server.server_close()
         handler._send_error = Mock()
         handler._send_json = Mock()
         return handler
+
+    @staticmethod
+    def _server_for(
+        analyzer: SimpleNamespace, *, enable_model_lifecycle: bool = False
+    ) -> BoundedThreadingHTTPServer:
+        return create_server(
+            "127.0.0.1",
+            0,
+            cast(PhonoMatch, analyzer),
+            enable_model_lifecycle=enable_model_lifecycle,
+        )
