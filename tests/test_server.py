@@ -1,6 +1,7 @@
 import io
 import tempfile
 import unittest
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
@@ -99,7 +100,7 @@ class ServerTests(unittest.TestCase):
         handler.path = "/v1/recognize/phrase"
 
         @contextmanager
-        def temporary_audio() -> Any:
+        def temporary_audio() -> Generator[Path, None, None]:
             yield Path("upload.wav")
 
         handler._temporary_audio = temporary_audio
@@ -121,7 +122,7 @@ class ServerTests(unittest.TestCase):
         handler._send_error.reset_mock()
 
         @contextmanager
-        def temporary_audio() -> Any:
+        def temporary_audio() -> Generator[Path, None, None]:
             yield Path("upload.wav")
 
         handler._temporary_audio = temporary_audio

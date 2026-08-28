@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import tempfile
 import wave
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
@@ -25,7 +25,7 @@ def load_sounddevice() -> Any:
 
 
 @contextmanager
-def recorded_audio(seconds: float = 2.0) -> Iterator[Path]:
+def recorded_audio(seconds: float = 2.0) -> Generator[Path, None, None]:
     """Record mono 16-bit audio and remove the temporary WAV on exit."""
     if not math.isfinite(seconds) or seconds <= 0:
         raise ValueError("recording duration must be a finite value greater than zero")

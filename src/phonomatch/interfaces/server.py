@@ -6,7 +6,7 @@ import json
 import logging
 import socket
 import tempfile
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager, suppress
 from dataclasses import asdict
 from http import HTTPStatus
@@ -199,7 +199,7 @@ def create_server(
                 self._send_json(HTTPStatus.OK, {"status": "unloaded"})
 
         @contextmanager
-        def _temporary_audio(self) -> Iterator[Path]:
+        def _temporary_audio(self) -> Generator[Path, None, None]:
             """Stream a bounded WAV request into a temporary file."""
             content_type = self.headers.get("Content-Type", "").split(";", 1)[0]
             if content_type not in {"audio/wav", "audio/x-wav"}:

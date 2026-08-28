@@ -1,5 +1,5 @@
 import unittest
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -14,7 +14,7 @@ class RecordingWorkflowTests(unittest.TestCase):
         events: list[str] = []
 
         @contextmanager
-        def fake_recording(_seconds: float) -> Iterator[Path]:
+        def fake_recording(_seconds: float) -> Generator[Path, None, None]:
             events.append("recording_started")
             yield Path("recording.wav")
 
@@ -46,7 +46,7 @@ class RecordingWorkflowTests(unittest.TestCase):
         expected = object()
 
         @contextmanager
-        def fake_recording(_seconds: float) -> Iterator[Path]:
+        def fake_recording(_seconds: float) -> Generator[Path, None, None]:
             yield Path("recording.wav")
 
         with (
