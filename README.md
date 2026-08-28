@@ -42,6 +42,16 @@ If Windows cannot detect an input device, first check its microphone privacy
 settings and confirm that the selected input device works in another
 application.
 
+PanPhon reads IPA data as UTF-8. On Windows, enable Python UTF-8 mode before
+running PhonoMatch if your system locale does not already use UTF-8:
+
+```console
+set PYTHONUTF8=1
+phonomatch --default-words
+```
+
+In PowerShell, use `$env:PYTHONUTF8 = "1"` instead of `set`.
+
 ## Install
 
 Install from PyPI:
